@@ -1,29 +1,20 @@
 <?php
-// /KP/admin_prodi/pengguna_dosen_kelola.php
+// /KP/admin_prodi/pengguna_dosen_kelola.php (Versi Diperbarui)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-
-// 1. OTENTIKASI DAN OTORISASI
 require_once '../includes/auth_check.php';
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin_prodi') {
-    session_unset();
-    session_destroy();
     header("Location: /KP/index.php?error=unauthorized_admin");
     exit();
 }
-
-$admin_identifier = $_SESSION['user_id'];
-
-// Sertakan file koneksi database
 require_once '../config/db_connect.php';
 
 $list_dosen = [];
 $error_message = '';
 $success_message = '';
 
-// 2. PROSES AKSI (UBAH STATUS AKUN DOSEN) JIKA ADA PARAMETER GET
 if (isset($_GET['action']) && isset($_GET['nip'])) {
     $action = $_GET['action'];
     $nip_aksi = $_GET['nip'];
@@ -35,180 +26,301 @@ if (isset($_GET['action']) && isset($_GET['nip'])) {
         $new_status = 'inactive';
     }
 
-    // Validasi new_status berdasarkan ENUM di tabel dosen_pembimbing
-    $allowed_statuses_dosen = ['active', 'inactive'];
-    if (!empty($new_status) && in_array($new_status, $allowed_statuses_dosen) && $conn && ($conn instanceof mysqli)) {
-        // Pastikan NIP ada sebelum update
-        $sql_check_nip = "SELECT nip FROM dosen_pembimbing WHERE nip = ?";
-        $stmt_check_nip = $conn->prepare($sql_check_nip);
-        $stmt_check_nip->bind_param("s", $nip_aksi);
-        $stmt_check_nip->execute();
-        $result_check_nip = $stmt_check_nip->get_result();
-
-        if ($result_check_nip->num_rows === 1) {
-            $sql_update_status = "UPDATE dosen_pembimbing SET status_akun = ? WHERE nip = ?";
-            $stmt_update_status = $conn->prepare($sql_update_status);
-            if ($stmt_update_status) {
-                $stmt_update_status->bind_param("ss", $new_status, $nip_aksi);
-                if ($stmt_update_status->execute()) {
-                    if ($stmt_update_status->affected_rows > 0) {
-                        $success_message = "Status akun untuk Dosen NIP " . htmlspecialchars($nip_aksi) . " berhasil diubah menjadi " . ucfirst($new_status) . ".";
-                    } else {
-                        $error_message = "Tidak ada perubahan status, mungkin status sudah " . ucfirst($new_status) . ".";
-                    }
-                } else {
-                    $error_message = "Gagal mengubah status akun dosen: " . htmlspecialchars($stmt_update_status->error);
-                }
-                $stmt_update_status->close();
-            } else {
-                $error_message = "Gagal menyiapkan statement update status dosen: " . htmlspecialchars($conn->error);
+    if (!empty($new_status) && $conn) {
+        $stmt_update = $conn->prepare("UPDATE dosen_pembimbing SET status_akun = ? WHERE nip = ?");
+        if ($stmt_update) {
+            $stmt_update->bind_param("ss", $new_status, $nip_aksi);
+            if ($stmt_update->execute() && $stmt_update->affected_rows > 0) {
+                $success_message = "Status akun untuk Dosen NIP " . htmlspecialchars($nip_aksi) . " berhasil diubah.";
             }
-        } else {
-            $error_message = "Dosen dengan NIP " . htmlspecialchars($nip_aksi) . " tidak ditemukan.";
         }
-        $stmt_check_nip->close();
-    } elseif (empty($new_status)) {
-        $error_message = "Tindakan tidak valid untuk status dosen.";
-    } elseif (!in_array($new_status, $allowed_statuses_dosen) && !empty($new_status)) {
-        $error_message = "Status tujuan tidak valid untuk dosen.";
-    }
-     else {
-        $error_message = "Koneksi database gagal atau tidak valid.";
     }
 }
 
-
-// 3. AMBIL SEMUA DATA DOSEN DARI DATABASE
-if ($conn && ($conn instanceof mysqli)) {
-    $sql_dosen = "SELECT nip, nama_dosen, email, status_akun, created_at 
-                  FROM dosen_pembimbing 
-                  ORDER BY nama_dosen ASC";
-    $result_dosen = $conn->query($sql_dosen);
+if ($conn) {
+    $result_dosen = $conn->query("SELECT nip, nama_dosen, email, status_akun FROM dosen_pembimbing ORDER BY nama_dosen ASC");
     if ($result_dosen) {
         while ($row = $result_dosen->fetch_assoc()) {
             $list_dosen[] = $row;
         }
-        $result_dosen->free();
     } else {
-        $error_message .= (empty($error_message)?"":"<br>") . "Gagal mengambil data dosen: " . htmlspecialchars($conn->error);
+        $error_message = "Gagal mengambil data dosen: " . $conn->error;
     }
-    // Koneksi akan ditutup di footer
 } else {
-     $error_message .= (empty($error_message)?"":"<br>") . "Koneksi database gagal atau tidak valid (saat ambil list dosen).";
+    $error_message = "Koneksi database gagal.";
 }
 
-// Set judul halaman dan sertakan header
-$page_title = "Kelola Akun Dosen Pembimbing";
+$page_title = "Kelola Akun Dosen";
 require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_admin_prodi.php'; ?>
-
-    <main class="main-content-area">
-        <div class="list-container kelola-dosen-list">
+<div class="main-content-full">
+    <div class="list-container">
+        <div class="list-header">
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <p>Halaman ini menampilkan daftar semua akun dosen pembimbing yang terdaftar. Anda dapat mengelola status akun mereka.</p>
-            <a href="/KP/admin_prodi/pengguna_dosen_tambah.php" class="btn btn-success mb-3"><i class="icon-plus"></i> Tambah Dosen Baru</a>
-            <hr>
-
-            <?php if (!empty($success_message)): ?>
-                <div class="message success"><p><?php echo $success_message; ?></p></div>
-            <?php endif; ?>
-            <?php if (!empty($error_message)): ?>
-                <div class="message error"><p><?php echo $error_message; ?></p></div>
-            <?php endif; ?>
-
-            <?php if (empty($list_dosen) && empty($error_message)): ?>
-                <div class="message info">
-                    <p>Belum ada data dosen pembimbing yang terdaftar di sistem.</p>
-                </div>
-            <?php elseif (!empty($list_dosen)): ?>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>NIP</th>
-                                <th>Nama Dosen</th>
-                                <th>Email</th>
-                                <th>Tgl. Dibuat</th>
-                                <th>Status Akun</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $counter = 1; ?>
-                            <?php foreach ($list_dosen as $dosen): ?>
-                                <tr>
-                                    <td><?php echo $counter++; ?></td>
-                                    <td><?php echo htmlspecialchars($dosen['nip']); ?></td>
-                                    <td><?php echo htmlspecialchars($dosen['nama_dosen']); ?></td>
-                                    <td><?php echo htmlspecialchars($dosen['email']); ?></td>
-                                    <td><?php echo date("d M Y", strtotime($dosen['created_at'])); ?></td>
-                                    <td>
-                                        <span class="status-akun status-dosen-<?php echo strtolower(htmlspecialchars($dosen['status_akun'])); ?>">
-                                            <?php echo ucfirst(htmlspecialchars($dosen['status_akun'])); ?>
-                                        </span>
-                                    </td>
-                                    <td class="actions-cell">
-                                        <a href="/KP/admin_prodi/pengguna_dosen_edit.php?nip=<?php echo htmlspecialchars($dosen['nip']); ?>" class="btn btn-info btn-sm" title="Edit Profil Dosen">Edit</a>
-                                        <?php if ($dosen['status_akun'] === 'inactive'): ?>
-                                            <a href="/KP/admin_prodi/pengguna_dosen_kelola.php?action=activate_dosen&nip=<?php echo htmlspecialchars($dosen['nip']); ?>" class="btn btn-success btn-sm" onclick="return confirm('Anda yakin ingin mengaktifkan akun dosen ini?');" title="Aktifkan Akun Dosen">Aktifkan</a>
-                                        <?php elseif ($dosen['status_akun'] === 'active'): ?>
-                                            <a href="/KP/admin_prodi/pengguna_dosen_kelola.php?action=deactivate_dosen&nip=<?php echo htmlspecialchars($dosen['nip']); ?>" class="btn btn-warning btn-sm" onclick="return confirm('Anda yakin ingin menonaktifkan akun dosen ini? Dosen dengan akun nonaktif tidak akan bisa login.');" title="Nonaktifkan Akun Dosen">Nonaktifkan</a>
-                                        <?php endif; ?>
-                                        </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-
+            <p>Lihat, tambah, edit, dan kelola status semua akun dosen pembimbing dan penguji.</p>
+            <a href="pengguna_dosen_tambah.php" class="btn btn-primary">➕ Tambah Dosen Baru</a>
         </div>
-    </main>
 
+        <div class="filter-search-container">
+            <div class="search-wrapper">
+                <input type="text" id="userSearchInput" placeholder="Cari dosen berdasarkan nama atau NIP...">
+                <span class="search-icon">🔍</span>
+            </div>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="message success"><p><?php echo htmlspecialchars($success_message); ?></p></div>
+        <?php endif; ?>
+        <?php if (!empty($error_message)): ?>
+            <div class="message error"><p><?php echo htmlspecialchars($error_message); ?></p></div>
+        <?php endif; ?>
+
+        <?php if (empty($list_dosen) && empty($error_message)): ?>
+            <div class="message info">
+                <h4>Data Kosong</h4>
+                <p>Belum ada data dosen yang terdaftar. Silakan tambahkan dosen baru.</p>
+            </div>
+        <?php else: ?>
+            <div class="user-card-grid" id="userCardGrid">
+                <?php foreach ($list_dosen as $dosen): ?>
+                    <div class="user-card">
+                        <div class="card-header-status status-dosen-<?php echo strtolower(htmlspecialchars($dosen['status_akun'])); ?>">
+                            <?php echo ucfirst(htmlspecialchars($dosen['status_akun'])); ?>
+                        </div>
+                        <div class="card-main-info">
+                            <div class="user-avatar"><?php echo strtoupper(substr($dosen['nama_dosen'], 0, 1)); ?></div>
+                            <h4 class="user-name"><?php echo htmlspecialchars($dosen['nama_dosen']); ?></h4>
+                            <p class="user-id">NIP: <?php echo htmlspecialchars($dosen['nip']); ?></p>
+                        </div>
+                        <div class="card-contact-info">
+                            <span>📧 <?php echo htmlspecialchars($dosen['email']); ?></span>
+                        </div>
+                        <div class="card-actions">
+                            <a href="pengguna_dosen_edit.php?nip=<?php echo htmlspecialchars($dosen['nip']); ?>" class="btn btn-secondary" title="Edit">Edit Profil</a>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" title="Ubah Status">Ubah Status</button>
+                                <div class="dropdown-menu">
+                                    <?php if ($dosen['status_akun'] === 'inactive'): ?>
+                                        <a href="?action=activate_dosen&nip=<?php echo htmlspecialchars($dosen['nip']); ?>" onclick="return confirm('Aktifkan akun ini?');">Aktifkan</a>
+                                    <?php elseif ($dosen['status_akun'] === 'active'): ?>
+                                        <a href="?action=deactivate_dosen&nip=<?php echo htmlspecialchars($dosen['nip']); ?>" onclick="return confirm('Non-aktifkan akun ini?');">Non-aktifkan</a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div id="noResultsMessage" class="message info" style="display: none;">
+                <h4>Pencarian Tidak Ditemukan</h4>
+                <p>Tidak ada dosen yang cocok dengan kata kunci pencarian Anda.</p>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS umum sudah ada dari header, sidebar, tabel, message, btn */
-    .kelola-dosen-list h1 { margin-top: 0; margin-bottom: 10px; }
-    .kelola-dosen-list hr { margin-bottom: 20px; }
-    .kelola-dosen-list p { margin-bottom: 15px; }
-    .btn.mb-3 { margin-bottom: 1rem !important; }
-    .icon-plus::before { content: "+ "; font-weight: bold; }
-
-
-    .data-table td.actions-cell .btn {
-        margin-right: 5px;
-        margin-bottom: 5px;
+/* Menggunakan gaya dari halaman kelola mahasiswa */
+.status-dosen-active { background-color: #28a745; }
+.status-dosen-inactive { background-color: #6c757d; }
+    .user-card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+    }
+    .user-card {
+        background-color: #fff;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
 
-    /* Styling untuk status akun dosen (ENUM: 'active','inactive') */
-    .status-akun { /* Class umum jika ada status lain nanti */
-        padding: 3px 8px;
-        border-radius: 12px;
+    .card-header-status {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 5px 12px;
+        border-radius: 20px;
         font-size: 0.8em;
-        font-weight: bold;
+        font-weight: 600;
         color: #fff;
-        white-space: nowrap;
     }
-    .status-dosen-active { background-color: #28a745; } /* Hijau */
-    .status-dosen-inactive { background-color: #6c757d; } /* Abu-abu */
+    .status-pending_verification { background-color: #ffc107; color: #212529;}
+    .status-active { background-color: #28a745; }
+    .status-suspended { background-color: #dc3545; }
 
-    /* Pastikan warna tombol dari CSS global sudah ada */
-    .btn-success { /* ... sudah ada ... */ }
-    .btn-warning { /* ... sudah ada ... */ }
-    .btn-danger { /* ... sudah ada ... */ }
-    .btn-info { /* ... sudah ada ... */ }
-</style>
+    .card-main-info {
+        padding: 2rem 1.5rem 1.5rem;
+        text-align: center;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5em;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        border: 4px solid #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .user-name {
+        margin: 0;
+        font-size: 1.3em;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+    .user-id {
+        margin: 0;
+        color: var(--secondary-color);
+        font-family: monospace;
+    }
+    .user-extra-info {
+        margin-top: 0.5rem;
+        font-size: 0.9em;
+        color: var(--secondary-color);
+    }
+    
+    .card-contact-info {
+        padding: 1rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        font-size: 0.9em;
+    }
+    .card-contact-info span {
+        color: #495057;
+        word-break: break-all;
+    }
+    
+    .card-actions {
+        margin-top: auto; /* Mendorong ke bawah */
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background-color: #f8f9fa;
+        border-top: 1px solid var(--border-color);
+    }
+    .card-actions .btn {
+        padding: 1rem;
+        border-radius: 0;
+        text-align: center;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background-color 0.3s ease;
+    }
+    .btn.btn-secondary {
+        border-right: 1px solid var(--border-color);
+        color: #495057;
+    }
+    .btn.btn-secondary:hover { background-color: #e2e6ea; }
+    .btn.btn-primary {
+        background-color: transparent;
+        color: var(--primary-color);
+    }
+    .btn.btn-primary:hover {
+        background-color: var(--primary-color);
+        color: #fff;
+    }
+
+    /* Dropdown untuk Aksi Status */
+    .dropdown { position: relative; }
+    .dropdown-toggle::after { content: ' ▼'; font-size: 0.7em; }
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        bottom: 100%; /* Muncul di atas tombol */
+        right: 0;
+        background-color: white;
+        min-width: 160px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        z-index: 1;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .dropdown-menu a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+    }
+    .dropdown-menu a:hover { background-color: #f1f1f1; }
+    .dropdown:hover .dropdown-menu { display: block; }
+    
+    /* BARU: CSS untuk Kotak Pencarian */
+    .filter-search-container {
+        margin-bottom: 2rem;
+    }
+    .search-wrapper {
+        position: relative;
+        max-width: 500px;
+    }
+    #userSearchInput {
+        width: 100%;
+        padding: 12px 20px 12px 45px; /* Padding kiri untuk ikon */
+        border: 1px solid var(--border-color);
+        border-radius: 50px; /* Bentuk pil */
+        font-size: 1em;
+        transition: all 0.3s ease;
+    }
+    #userSearchInput:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        outline: none;
+    }
+    .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.2em;
+        color: var(--secondary-color);
+    }</style>
+
+<script>
+// Menggunakan skrip pencarian yang sama dengan halaman kelola mahasiswa
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearchInput');
+    const userCardGrid = document.getElementById('userCardGrid');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    
+    if (searchInput && userCardGrid) {
+        const userCards = userCardGrid.querySelectorAll('.user-card');
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let visibleCards = 0;
+            userCards.forEach(function(card) {
+                const userName = card.querySelector('.user-name').textContent.toLowerCase();
+                const userId = card.querySelector('.user-id').textContent.toLowerCase();
+                if (userName.includes(searchTerm) || userId.includes(searchTerm)) {
+                    card.style.display = 'flex';
+                    visibleCards++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            if (noResultsMessage) {
+                noResultsMessage.style.display = (visibleCards === 0) ? 'block' : 'none';
+            }
+        });
+    }
+});
+</script>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli)) {
-    $conn->close();
-}
+if (isset($conn)) { $conn->close(); }
 ?>

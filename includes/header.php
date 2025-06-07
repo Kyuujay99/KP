@@ -1,25 +1,25 @@
 <?php
-// /KP/includes/header.php
+// /KP/includes/header.php (Versi Final dengan Dropdown Klik)
 
-// Pastikan session dimulai. Jika sudah dimulai di halaman pemanggil, ini tidak akan memulai ulang.
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-
-// Variabel untuk judul halaman default. Bisa di-override oleh halaman yang memanggil.
 if (!isset($page_title)) {
     $page_title = "SIM Kerja Praktek";
 }
-
-// Variabel untuk menentukan path dasar (berguna jika file CSS/JS eksternal nanti)
-// Untuk sekarang, kita asumsikan /KP/ adalah root proyek.
-$base_url = "/KP"; // Sesuaikan jika nama folder proyekmu berbeda
-
-// Cek apakah pengguna sudah login untuk menampilkan nama dan tombol logout
+$base_url = "/KP";
 $is_logged_in = isset($_SESSION['user_id']);
 $user_nama = $is_logged_in ? htmlspecialchars($_SESSION['user_nama']) : 'Tamu';
-$user_role = $is_logged_in ? htmlspecialchars(ucfirst($_SESSION['user_role'])) : '';
+$user_role_key = $is_logged_in ? $_SESSION['user_role'] : '';
+$user_role_display = $is_logged_in ? htmlspecialchars(ucfirst(str_replace('_', ' ', $_SESSION['user_role']))) : '';
 
+// Definisikan item menu untuk setiap peran
+$menu_items = [
+    'mahasiswa' => [ 'Dashboard' => '/mahasiswa/dashboard.php', 'Profil Saya' => '/mahasiswa/profil.php', 'Pengajuan KP' => '/mahasiswa/pengajuan_kp_view.php', 'Bimbingan' => '/mahasiswa/bimbingan_view.php', 'Logbook' => '/mahasiswa/logbook_view.php', 'Dokumen' => '/mahasiswa/dokumen_view.php' ],
+    'dosen' => [ 'Dashboard' => '/dosen/dashboard.php', 'Profil Saya' => '/dosen/profil.php', 'Verifikasi Pengajuan' => '/dosen/pengajuan_list.php', 'Mahasiswa Bimbingan' => '/dosen/bimbingan_mahasiswa_list.php', 'Jadwal Seminar' => '/dosen/seminar_jadwal_list.php', 'Input Nilai' => '/dosen/nilai_input_list.php' ],
+    'admin_prodi' => [ 'Dashboard' => '/admin_prodi/dashboard.php', 'Monitoring Pengajuan' => '/admin_prodi/pengajuan_kp_monitoring.php', 'Kelola Mahasiswa' => '/admin_prodi/pengguna_mahasiswa_kelola.php', 'Kelola Dosen' => '/admin_prodi/pengguna_dosen_kelola.php', 'Kelola Perusahaan' => '/admin_prodi/perusahaan_kelola.php', 'Manajemen Surat' => '/admin_prodi/surat_generate_list.php', 'Verifikasi Dokumen' => '/admin_prodi/dokumen_verifikasi_list.php', 'Laporan KP' => '/admin_prodi/laporan_kp_view.php' ],
+    'perusahaan' => [ 'Dashboard' => '/perusahaan/dashboard.php', 'Profil Perusahaan' => '/perusahaan/profil_perusahaan.php', 'Pengajuan Masuk' => '/perusahaan/pengajuan_kp_masuk.php', 'Mahasiswa KP' => '/perusahaan/mahasiswa_kp_list.php', 'Input Penilaian' => '/perusahaan/penilaian_lapangan_list.php' ]
+];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -27,217 +27,104 @@ $user_role = $is_logged_in ? htmlspecialchars(ucfirst($_SESSION['user_role'])) :
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?> - SIM KP</title>
-
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Reset CSS Sederhana & Global Styles */
-        body, h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, figcaption, blockquote, dl, dd, form, fieldset, legend, input, textarea, button, select, table, th, td {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box; /* Perhitungan box model yang lebih intuitif */
+        :root {
+            --primary-color: #007BFF; --primary-hover: #0056b3; --secondary-color: #6c757d;
+            --dark-color: #343a40; --light-color: #f8f9fa; --background-color: #f4f7f9;
+            --text-color: #333; --border-color: #dee2e6; --card-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            --border-radius: 12px;
         }
+        * { box-sizing: border-box; }
+        body, h1, h2, h3, h4, h5, h6, p, ul, ol { margin: 0; padding: 0; }
+        body { font-family: 'Poppins', sans-serif; line-height: 1.6; background-color: var(--background-color); color: var(--text-color); display: flex; flex-direction: column; min-height: 100vh; }
+        .navbar { background-color: #fff; padding: 0.8rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000; }
+        .navbar-brand { font-size: 1.6rem; color: var(--primary-color); text-decoration: none; font-weight: 700; }
+        .navbar-nav { list-style: none; display: flex; align-items: center; gap: 0.5rem; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            background-color: #f0f2f5; /* Warna latar yang sedikit lebih lembut */
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh; /* Memastikan footer selalu di bawah jika konten pendek */
-        }
+        /* --- PERUBAHAN CSS UNTUK DROPDOWN --- */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-toggle { background-color: transparent; color: var(--dark-color); padding: 8px 12px; font-size: 0.95em; font-weight: 500; border: 2px solid transparent; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: 50px; transition: all 0.3s ease; }
+        .dropdown-toggle:hover, .dropdown-toggle.active { background-color: #e9f5ff; border-color: #cfe8ff; }
+        .dropdown-toggle .user-avatar-initial { width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary-color); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; }
+        .dropdown-toggle .user-name-nav { font-weight: 600; }
+        .dropdown-toggle::after { content: '▼'; font-size: 0.7em; margin-left: 5px; transition: transform 0.3s ease; }
+        .dropdown-toggle.active::after { transform: rotate(180deg); }
 
-        /* Styling untuk Header/Navbar */
-        .navbar {
-            background-color: #343a40; /* Warna gelap untuk navbar */
-            color: #fff;
-            padding: 0.8rem 2rem; /* Padding atas/bawah dan kiri/kanan */
-            display: flex;
-            justify-content: space-between; /* Brand di kiri, item lain di kanan */
-            align-items: center; /* Vertikal align item di tengah */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Shadow halus di bawah navbar */
+        .dropdown-menu {
+            display: none; /* Defaultnya tersembunyi */
+            position: absolute; right: 0; top: calc(100% + 10px);
+            background-color: white; min-width: 260px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1); z-index: 1001;
+            border-radius: var(--border-radius); padding: 0.5rem 0;
+            animation: fadeIn 0.2s ease-out;
         }
+        /* Kelas .show akan ditambahkan oleh JavaScript untuk menampilkan menu */
+        .dropdown-menu.show { display: block; }
+        .dropdown-menu a { color: #333; padding: 12px 20px; text-decoration: none; display: block; font-size: 0.9em; transition: background-color 0.2s ease, color 0.2s ease; }
+        .dropdown-menu a:hover { background-color: var(--primary-color); color: white; }
+        .dropdown-divider { height: 1px; margin: 0.5rem 0; background-color: var(--border-color); }
+        .dropdown-menu a.logout-link { color: #dc3545; font-weight: 600; }
+        .dropdown-menu a.logout-link:hover { background-color: #dc3545; color: white; }
 
-        .navbar-brand {
-            font-size: 1.6rem; /* Ukuran font brand */
-            color: #fff;
-            text-decoration: none;
-            font-weight: bold;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .navbar-brand:hover {
-            color: #f8f9fa;
-        }
-
-        .navbar-nav {
-            list-style: none; /* Hilangkan bullet points dari list */
-            display: flex; /* Susun item navigasi secara horizontal */
-            align-items: center;
-        }
-
-        .nav-item {
-            margin-left: 1rem; /* Jarak antar item navigasi */
-        }
-
-        .nav-link {
-            color: #adb5bd; /* Warna link navigasi (abu-abu muda) */
-            text-decoration: none;
-            padding: 0.5rem 0.75rem;
-            border-radius: 4px;
-            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
-        }
-        .nav-link:hover,
-        .nav-link.active { /* Kelas 'active' bisa ditambahkan via PHP jika link sesuai halaman saat ini */
-            color: #fff;
-            background-color: #495057; /* Warna latar saat hover atau aktif */
-        }
-
-        .user-info {
-            color: #ced4da; /* Warna untuk info pengguna */
-            font-size: 0.9rem;
-            margin-right: 0.5rem; /* Jarak ke tombol logout */
-        }
-        .user-info strong {
-            color: #f8f9fa; /* Nama pengguna lebih terang */
-        }
-
-        .btn { /* Tombol umum, bisa dipakai di banyak tempat */
-            display: inline-block;
-            padding: 0.375rem 0.75rem;
-            font-size: 1rem;
-            font-weight: 400;
-            line-height: 1.5;
-            text-align: center;
-            text-decoration: none;
-            vertical-align: middle;
-            cursor: pointer;
-            user-select: none; /* Agar teks tombol tidak bisa dipilih */
-            border: 1px solid transparent;
-            border-radius: 0.25rem;
-            transition: color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out;
-        }
-        .btn-logout {
-            color: #fff;
-            background-color: #dc3545; /* Warna merah untuk logout */
-            border-color: #dc3545;
-        }
-        .btn-logout:hover {
-            background-color: #c82333;
-            border-color: #bd2130;
-        }
-        .btn-login {
-            color: #fff;
-            background-color: #007bff; /* Warna biru untuk login */
-            border-color: #007bff;
-        }
-        .btn-login:hover {
-            background-color: #0069d9;
-            border-color: #0062cc;
-        }
-
-
-        /* Styling untuk Kontainer Utama Konten */
-        .main-container {
-            width: 100%;
-            max-width: 1200px; /* Lebar maksimum konten */
-            margin: 20px auto; /* Posisi tengah dan jarak atas/bawah */
-            padding: 20px;
-            background-color: transparent; /* Latar transparan, karena body sudah punya warna */
-            flex-grow: 1; /* Membuat kontainer tumbuh mengisi sisa ruang (penting untuk footer di bawah) */
-            box-sizing: border-box;
-        }
-
-        /* Umum untuk form dan tabel yang mungkin dipakai di banyak halaman */
-        /* Tombol dari contoh sebelumnya */
-        .btn-info { color: #fff; background-color: #17a2b8; border-color: #17a2b8; }
-        .btn-info:hover { background-color: #138496; border-color: #117a8b; }
-        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; line-height: 1.5; border-radius: 0.2rem; }
-
-        hr { border: 0; height: 1px; background-color: #eee; margin: 20px 0; }
     </style>
-    </head>
+</head>
 <body>
-
     <nav class="navbar">
-        <a href="<?php echo $base_url; ?>/index.php" class="navbar-brand">SIM KP</a>
+        <a href="<?php echo $base_url; ?>/index.php" class="navbar-brand">SISTEM INFORMASI MANAJEMEN - KERJA PRAKTEK</a>
         <ul class="navbar-nav">
             <?php if ($is_logged_in): ?>
-                <li class="nav-item user-info">
-                    Halo, <strong><?php echo $user_nama; ?></strong> (<?php echo $user_role; ?>)
-                </li>
-                <?php
-                // Navigasi dashboard berdasarkan peran
-                if ($_SESSION['user_role'] == 'mahasiswa') {
-                    echo '<li class="nav-item"><a href="' . $base_url . '/mahasiswa/dashboard.php" class="nav-link">Dashboard</a></li>';
-                } elseif ($_SESSION['user_role'] == 'dosen') {
-                    echo '<li class="nav-item"><a href="' . $base_url . '/dosen/dashboard.php" class="nav-link">Dashboard</a></li>';
-                } elseif ($_SESSION['user_role'] == 'admin_prodi') {
-                    echo '<li class="nav-item"><a href="' . $base_url . '/admin_prodi/dashboard.php" class="nav-link">Dashboard</a></li>';
-                } elseif ($_SESSION['user_role'] == 'perusahaan') {
-                    echo '<li class="nav-item"><a href="' . $base_url . '/perusahaan/dashboard.php" class="nav-link">Dashboard</a></li>';
-                }
-                // Tambahkan link lain yang umum untuk semua user yang login, misal Profil
-                // Contoh: echo '<li class="nav-item"><a href="' . $base_url . '/' . $_SESSION['user_role'] . '/profil.php" class="nav-link">Profil Saya</a></li>';
-                ?>
                 <li class="nav-item">
-                    <a href="<?php echo $base_url; ?>/logout.php" class="nav-link btn btn-logout">Logout</a>
+                    <div class="dropdown">
+                        <button class="dropdown-toggle" id="dropdown-button">
+                            <span class="user-avatar-initial"><?php echo strtoupper(substr($user_nama, 0, 1)); ?></span>
+                            <span class="user-name-nav"><?php echo htmlspecialchars(explode(' ', $user_nama)[0]); ?></span>
+                        </button>
+                        <div class="dropdown-menu" id="dropdown-menu">
+                            <?php if (isset($menu_items[$user_role_key])): ?>
+                                <?php foreach ($menu_items[$user_role_key] as $title => $link): ?>
+                                    <a href="<?php echo $base_url . $link; ?>"><?php echo $title; ?></a>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                            <div class="dropdown-divider"></div>
+                            <a href="<?php echo $base_url; ?>/logout.php" class="logout-link">Logout</a>
+                        </div>
+                    </div>
                 </li>
             <?php else: ?>
                 <li class="nav-item">
-                    <a href="<?php echo $base_url; ?>/index.php" class="nav-link">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?php echo $base_url; ?>/register.php" class="nav-link">Register</a>
+                    <a href="<?php echo $base_url; ?>/index.php" class="btn">Login</a>
                 </li>
             <?php endif; ?>
         </ul>
     </nav>
 
-    <div class="main-container">
-        ```
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropdownButton = document.getElementById('dropdown-button');
+        const dropdownMenu = document.getElementById('dropdown-menu');
 
-**Penjelasan Detail `includes/header.php`:**
+        if (dropdownButton && dropdownMenu) {
+            // Tampilkan/sembunyikan menu saat tombol di-klik
+            dropdownButton.addEventListener('click', function(event) {
+                event.stopPropagation(); // Mencegah event klik menyebar ke window
+                dropdownMenu.classList.toggle('show');
+                dropdownButton.classList.toggle('active');
+            });
 
-1.  **`session_start()`**: Penting untuk mengakses variabel `$_SESSION`.
-2.  **`$page_title`**: Variabel ini memungkinkan setiap halaman yang memanggil `header.php` untuk menentukan judulnya sendiri. Jika tidak diset, judul default akan digunakan.
-    * Cara penggunaan di halaman pemanggil (misalnya di `mahasiswa/dashboard.php` sebelum `require_once '../includes/header.php';`):
-        ```php
-        <?php
-        $page_title = "Dashboard Mahasiswa"; // Set judul spesifik
-        require_once '../includes/header.php';
-        ?>
-        ```
-3.  **`$base_url`**: Berguna untuk membuat path URL yang konsisten ke aset atau halaman lain.
-4.  **Pengecekan Login (`$is_logged_in`, `$user_nama`, `$user_role`)**: Mengambil data sesi untuk personalisasi navbar.
-5.  **Struktur HTML Dasar**: `<!DOCTYPE html>`, `<html>`, `<head>`, dan awal `<body>`.
-6.  **Meta Tags**: `charset` dan `viewport` adalah standar penting.
-7.  **CSS Disematkan**:
-    * **Reset Sederhana**: Menghilangkan margin/padding default browser agar tampilan lebih konsisten.
-    * **Global Styles**: Styling dasar untuk `body`.
-    * **Navbar Styles**: Pengaturan tampilan untuk bar navigasi, brand, link, dan info pengguna.
-    * **Main Container Styles**: Mengatur layout dasar untuk area konten utama.
-8.  **Navbar Dinamis**:
-    * Logo/Brand "SIM KP" mengarah ke `index.php`.
-    * Jika pengguna **sudah login** (`$is_logged_in` bernilai `true`):
-        * Menampilkan pesan "Halo, [Nama Pengguna] ([Peran])".
-        * Menampilkan link "Dashboard" yang mengarah ke dashboard sesuai peran pengguna.
-        * Menampilkan tombol/link "Logout" yang mengarah ke `logout.php`.
-    * Jika pengguna **belum login**:
-        * Menampilkan link "Login" dan "Register".
-9.  **`<div class="main-container">`**: Ini adalah `div` pembungkus yang akan berisi konten unik dari setiap halaman (misalnya, konten dari `mahasiswa/dashboard.php`). `flex-grow: 1;` pada `body` dan `main-container` membantu footer menempel di bawah jika kontennya pendek.
-
-**2. Kode Detail untuk `includes/footer.php`**
-
-File ini akan sangat sederhana, hanya berisi penutup tag dan mungkin copyright.
-
-```php
-<?php
-// /KP/includes/footer.php
-
-$current_year = date("Y"); // Mendapatkan tahun saat ini secara dinamis
-?>
-
-        </div> <footer style="background-color: #343a40; color: #adb5bd; text-align: center; padding: 1.5rem 1rem; margin-top: auto; /* Mendorong footer ke bawah */ font-size: 0.9em; box-shadow: 0 -2px 4px rgba(0,0,0,0.1);">
-        <p>&copy; <?php echo $current_year; ?> Sistem Informasi Manajemen Kerja Praktek. All Rights Reserved.</p>
-        </footer>
-
-    </body>
-</html>
+            // Sembunyikan menu saat mengklik di luar area menu
+            window.addEventListener('click', function(event) {
+                if (!dropdownButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                    if (dropdownMenu.classList.contains('show')) {
+                        dropdownMenu.classList.remove('show');
+                        dropdownButton.classList.remove('active');
+                    }
+                }
+            });
+        }
+    });
+    </script>

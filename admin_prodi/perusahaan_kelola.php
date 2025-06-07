@@ -1,227 +1,222 @@
 <?php
-// /KP/admin_prodi/perusahaan_kelola.php
+// /KP/admin_prodi/perusahaan_kelola.php (Versi Baru Disesuaikan)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-
-// 1. OTENTIKASI DAN OTORISASI
 require_once '../includes/auth_check.php';
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin_prodi') {
-    session_unset();
-    session_destroy();
     header("Location: /KP/index.php?error=unauthorized_admin");
     exit();
 }
 
-$admin_identifier = $_SESSION['user_id'];
-
-// Sertakan file koneksi database
 require_once '../config/db_connect.php';
 
 $list_perusahaan = [];
 $error_message = '';
 $success_message = '';
 
-// 2. PROSES AKSI (UBAH STATUS AKUN PERUSAHAAN) JIKA ADA PARAMETER GET
+// Logika untuk memproses perubahan status
 if (isset($_GET['action']) && isset($_GET['id_perusahaan'])) {
-    $action = $_GET['action'];
-    $id_perusahaan_aksi = filter_var($_GET['id_perusahaan'], FILTER_VALIDATE_INT);
-    $new_status = '';
+    if ($conn) {
+        $action = $_GET['action'];
+        $id_perusahaan_aksi = filter_var($_GET['id_perusahaan'], FILTER_VALIDATE_INT);
+        $new_status = '';
+        if ($id_perusahaan_aksi) {
+            if ($action === 'approve_perusahaan') $new_status = 'active';
+            elseif ($action === 'deactivate_perusahaan') $new_status = 'inactive';
+            elseif ($action === 'reactivate_perusahaan') $new_status = 'active';
 
-    if ($id_perusahaan_aksi === false) {
-        $error_message = "ID Perusahaan tidak valid.";
-    } else {
-        if ($action === 'approve_perusahaan') {
-            $new_status = 'active';
-        } elseif ($action === 'deactivate_perusahaan') {
-            $new_status = 'inactive';
-        } elseif ($action === 'reactivate_perusahaan') { // Jika ingin mengaktifkan kembali dari inactive
-            $new_status = 'active';
-        }
-
-        // Validasi new_status berdasarkan ENUM di tabel perusahaan
-        $allowed_statuses_perusahaan = ['pending_approval', 'active', 'inactive'];
-        if (!empty($new_status) && in_array($new_status, $allowed_statuses_perusahaan) && $conn && ($conn instanceof mysqli)) {
-            // Pastikan ID Perusahaan ada sebelum update
-            $sql_check_id = "SELECT id_perusahaan FROM perusahaan WHERE id_perusahaan = ?";
-            $stmt_check_id = $conn->prepare($sql_check_id);
-            $stmt_check_id->bind_param("i", $id_perusahaan_aksi);
-            $stmt_check_id->execute();
-            $result_check_id = $stmt_check_id->get_result();
-
-            if ($result_check_id->num_rows === 1) {
-                $sql_update_status = "UPDATE perusahaan SET status_akun = ? WHERE id_perusahaan = ?";
-                $stmt_update_status = $conn->prepare($sql_update_status);
-                if ($stmt_update_status) {
-                    $stmt_update_status->bind_param("si", $new_status, $id_perusahaan_aksi);
-                    if ($stmt_update_status->execute()) {
-                        if ($stmt_update_status->affected_rows > 0) {
-                            $success_message = "Status akun untuk Perusahaan ID " . htmlspecialchars($id_perusahaan_aksi) . " berhasil diubah menjadi " . ucfirst($new_status) . ".";
+            if (!empty($new_status)) {
+                $stmt = $conn->prepare("UPDATE perusahaan SET status_akun = ? WHERE id_perusahaan = ?");
+                if ($stmt) {
+                    $stmt->bind_param("si", $new_status, $id_perusahaan_aksi);
+                    if ($stmt->execute()) {
+                        if ($stmt->affected_rows > 0) {
+                            $success_message = "Status akun perusahaan berhasil diubah menjadi '" . ucfirst($new_status) . "'.";
                         } else {
-                            $error_message = "Tidak ada perubahan status, mungkin status sudah " . ucfirst($new_status) . ".";
+                            $error_message = "Tidak ada perubahan status, mungkin status sudah sama.";
                         }
                     } else {
-                        $error_message = "Gagal mengubah status akun perusahaan: " . htmlspecialchars($stmt_update_status->error);
+                        $error_message = "Gagal mengubah status: " . $stmt->error;
                     }
-                    $stmt_update_status->close();
+                    $stmt->close();
                 } else {
-                    $error_message = "Gagal menyiapkan statement update status perusahaan: " . htmlspecialchars($conn->error);
+                    $error_message = "Gagal menyiapkan statement: " . $conn->error;
                 }
             } else {
-                $error_message = "Perusahaan dengan ID " . htmlspecialchars($id_perusahaan_aksi) . " tidak ditemukan.";
+                $error_message = "Tindakan tidak valid.";
             }
-            $stmt_check_id->close();
-        } elseif (empty($new_status) && $id_perusahaan_aksi) { // ID valid tapi action tidak menghasilkan new_status
-             $error_message = "Tindakan tidak valid untuk status perusahaan.";
-        } elseif (!empty($new_status) && !in_array($new_status, $allowed_statuses_perusahaan) && $id_perusahaan_aksi) {
-            $error_message = "Status tujuan tidak valid untuk perusahaan.";
-        } 
-        elseif ($id_perusahaan_aksi && (!$conn || !($conn instanceof mysqli))) {
-            $error_message = "Koneksi database gagal atau tidak valid.";
+        } else {
+            $error_message = "ID Perusahaan tidak valid.";
         }
+    } else {
+        $error_message = "Koneksi database gagal.";
     }
 }
 
-
-// 3. AMBIL SEMUA DATA PERUSAHAAN DARI DATABASE
-if ($conn && ($conn instanceof mysqli)) {
-    $sql_perusahaan = "SELECT id_perusahaan, nama_perusahaan, email_perusahaan, bidang, alamat, 
-                              kontak_person_nama, kontak_person_email, kontak_person_no_hp, status_akun, created_at 
-                       FROM perusahaan 
-                       ORDER BY nama_perusahaan ASC";
-    $result_perusahaan_db = $conn->query($sql_perusahaan); // Mengganti nama variabel result
+// Logika untuk mengambil daftar perusahaan
+if ($conn) {
+    $sql_perusahaan = "SELECT id_perusahaan, nama_perusahaan, email_perusahaan, bidang, kontak_person_nama, kontak_person_no_hp, status_akun FROM perusahaan ORDER BY CASE WHEN status_akun = 'pending_approval' THEN 1 WHEN status_akun = 'active' THEN 2 ELSE 3 END, nama_perusahaan ASC";
+    $result_perusahaan_db = $conn->query($sql_perusahaan);
     if ($result_perusahaan_db) {
         while ($row = $result_perusahaan_db->fetch_assoc()) {
             $list_perusahaan[] = $row;
         }
-        $result_perusahaan_db->free();
     } else {
-        $error_message .= (empty($error_message)?"":"<br>") . "Gagal mengambil data perusahaan: " . htmlspecialchars($conn->error);
+        $error_message = "Gagal mengambil data perusahaan: " . $conn->error;
     }
 } else {
-     $error_message .= (empty($error_message)?"":"<br>") . "Koneksi database gagal atau tidak valid (saat ambil list perusahaan).";
+    if(empty($error_message)) $error_message = "Koneksi database gagal.";
 }
 
-// Set judul halaman dan sertakan header
 $page_title = "Kelola Data Perusahaan Mitra";
 require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_admin_prodi.php'; ?>
-
-    <main class="main-content-area">
-        <div class="list-container kelola-perusahaan-list">
+<div class="main-content-full">
+    <div class="list-container">
+        <div class="list-header">
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <p>Halaman ini menampilkan daftar semua perusahaan mitra yang terdaftar. Anda dapat menyetujui perusahaan baru dan mengelola statusnya.</p>
-            <a href="/KP/admin_prodi/perusahaan_tambah.php" class="btn btn-success mb-3"><i class="icon-plus"></i> Tambah Perusahaan Baru</a>
-            <hr>
-
-            <?php if (!empty($success_message)): ?>
-                <div class="message success"><p><?php echo $success_message; ?></p></div>
-            <?php endif; ?>
-            <?php if (!empty($error_message)): ?>
-                <div class="message error"><p><?php echo $error_message; ?></p></div>
-            <?php endif; ?>
-
-            <?php if (empty($list_perusahaan) && empty($error_message)): ?>
-                <div class="message info">
-                    <p>Belum ada data perusahaan mitra yang terdaftar di sistem.</p>
-                </div>
-            <?php elseif (!empty($list_perusahaan)): ?>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>ID</th>
-                                <th>Nama Perusahaan</th>
-                                <th>Email</th>
-                                <th>Bidang</th>
-                                <th>Kontak Person</th>
-                                <th>Status Akun</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $counter = 1; ?>
-                            <?php foreach ($list_perusahaan as $perusahaan): ?>
-                                <tr>
-                                    <td><?php echo $counter++; ?></td>
-                                    <td><?php echo $perusahaan['id_perusahaan']; ?></td>
-                                    <td><?php echo htmlspecialchars($perusahaan['nama_perusahaan']); ?></td>
-                                    <td><?php echo htmlspecialchars($perusahaan['email_perusahaan']); ?></td>
-                                    <td><?php echo htmlspecialchars($perusahaan['bidang'] ?: '-'); ?></td>
-                                    <td>
-                                        <?php echo htmlspecialchars($perusahaan['kontak_person_nama'] ?: '-'); ?>
-                                        <?php if($perusahaan['kontak_person_no_hp']): ?>
-                                            <br><small>(<?php echo htmlspecialchars($perusahaan['kontak_person_no_hp']); ?>)</small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="status-akun status-perusahaan-<?php echo strtolower(str_replace('_', '-', htmlspecialchars($perusahaan['status_akun']))); ?>">
-                                            <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($perusahaan['status_akun']))); ?>
-                                        </span>
-                                    </td>
-                                    <td class="actions-cell">
-                                        <a href="/KP/admin_prodi/perusahaan_edit.php?id_perusahaan=<?php echo $perusahaan['id_perusahaan']; ?>" class="btn btn-info btn-sm" title="Edit Data Perusahaan">Edit</a>
-                                        <?php if ($perusahaan['status_akun'] === 'pending_approval'): ?>
-                                            <a href="/KP/admin_prodi/perusahaan_kelola.php?action=approve_perusahaan&id_perusahaan=<?php echo $perusahaan['id_perusahaan']; ?>" class="btn btn-success btn-sm" onclick="return confirm('Anda yakin ingin menyetujui perusahaan ini?');" title="Setujui Perusahaan">Setujui</a>
-                                        <?php elseif ($perusahaan['status_akun'] === 'active'): ?>
-                                            <a href="/KP/admin_prodi/perusahaan_kelola.php?action=deactivate_perusahaan&id_perusahaan=<?php echo $perusahaan['id_perusahaan']; ?>" class="btn btn-warning btn-sm" onclick="return confirm('Anda yakin ingin menonaktifkan perusahaan ini? Perusahaan nonaktif tidak akan bisa dipilih mahasiswa.');" title="Nonaktifkan Perusahaan">Nonaktifkan</a>
-                                        <?php elseif ($perusahaan['status_akun'] === 'inactive'): ?>
-                                            <a href="/KP/admin_prodi/perusahaan_kelola.php?action=reactivate_perusahaan&id_perusahaan=<?php echo $perusahaan['id_perusahaan']; ?>" class="btn btn-success btn-sm" onclick="return confirm('Anda yakin ingin mengaktifkan kembali perusahaan ini?');" title="Aktifkan Kembali Perusahaan">Re-Aktifkan</a>
-                                        <?php endif; ?>
-                                        </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-
+            <p>Verifikasi, kelola, dan lihat semua perusahaan mitra yang terdaftar dalam sistem.</p>
+            <a href="perusahaan_tambah.php" class="btn btn-primary">➕ Tambah Perusahaan Baru</a>
         </div>
-    </main>
 
+        <div class="filter-search-container">
+            <div class="search-wrapper">
+                <input type="text" id="userSearchInput" placeholder="Cari perusahaan berdasarkan nama atau bidang...">
+                <span class="search-icon">🔍</span>
+            </div>
+        </div>
+
+        <?php if (!empty($success_message)): ?>
+            <div class="message success"><p><?php echo htmlspecialchars($success_message); ?></p></div>
+        <?php endif; ?>
+        <?php if (!empty($error_message)): ?>
+            <div class="message error"><p><?php echo htmlspecialchars($error_message); ?></p></div>
+        <?php endif; ?>
+
+        <?php if (empty($list_perusahaan) && empty($error_message)): ?>
+            <div class="message info">
+                <h4>Data Kosong</h4>
+                <p>Belum ada data perusahaan mitra yang terdaftar.</p>
+            </div>
+        <?php else: ?>
+            <div class="user-card-grid" id="userCardGrid">
+                <?php foreach ($list_perusahaan as $p): ?>
+                    <div class="user-card">
+                        <div class="card-header-status status-perusahaan-<?php echo strtolower(htmlspecialchars($p['status_akun'])); ?>">
+                            <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($p['status_akun']))); ?>
+                        </div>
+                        <div class="card-main-info">
+                            <div class="user-avatar company-avatar">🏢</div>
+                            <h4 class="user-name"><?php echo htmlspecialchars($p['nama_perusahaan']); ?></h4>
+                            <p class="user-id company-bidang"><?php echo htmlspecialchars($p['bidang'] ?: 'Bidang belum diatur'); ?></p>
+                        </div>
+                        <div class="card-contact-info">
+                            <span>📧 <?php echo htmlspecialchars($p['email_perusahaan']); ?></span>
+                            <span class="company-pic">👤 PIC: <?php echo htmlspecialchars($p['kontak_person_nama'] ?: 'N/A'); ?> (<?php echo htmlspecialchars($p['kontak_person_no_hp'] ?: '-'); ?>)</span>
+                        </div>
+                        <div class="card-actions">
+                            <a href="perusahaan_edit.php?id_perusahaan=<?php echo $p['id_perusahaan']; ?>" class="btn btn-secondary" title="Edit">Edit Detail</a>
+                            <div class="dropdown">
+                                <button class="btn btn-primary dropdown-toggle" title="Ubah Status">Ubah Status</button>
+                                <div class="dropdown-menu">
+                                    <?php if ($p['status_akun'] === 'pending_approval'): ?>
+                                        <a href="?action=approve_perusahaan&id_perusahaan=<?php echo $p['id_perusahaan']; ?>" onclick="return confirm('Anda yakin ingin menyetujui perusahaan ini?');">Setujui</a>
+                                    <?php endif; ?>
+                                    <?php if ($p['status_akun'] === 'active'): ?>
+                                        <a href="?action=deactivate_perusahaan&id_perusahaan=<?php echo $p['id_perusahaan']; ?>" onclick="return confirm('Anda yakin ingin menonaktifkan perusahaan ini?');">Non-aktifkan</a>
+                                    <?php endif; ?>
+                                    <?php if ($p['status_akun'] === 'inactive'): ?>
+                                        <a href="?action=reactivate_perusahaan&id_perusahaan=<?php echo $p['id_perusahaan']; ?>" onclick="return confirm('Anda yakin ingin mengaktifkan kembali?');">Re-Aktifkan</a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div id="noResultsMessage" class="message info" style="display: none;">
+                <h4>Pencarian Tidak Ditemukan</h4>
+                <p>Tidak ada perusahaan yang cocok dengan kata kunci pencarian Anda.</p>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS umum sudah ada dari header, sidebar, tabel, message, btn */
-    .kelola-perusahaan-list h1 { margin-top: 0; margin-bottom: 10px; }
-    .kelola-perusahaan-list hr { margin-bottom: 20px; }
-    .kelola-perusahaan-list p { margin-bottom: 15px; }
-    .btn.mb-3 { margin-bottom: 1rem !important; }
-    .icon-plus::before { content: "+ "; font-weight: bold; }
+    /* Menggunakan gaya dari halaman kelola mahasiswa, hanya kustomisasi kecil */
+    .company-avatar { background-color: #6c757d; }
+    .company-bidang { color: var(--primary-color); font-weight: 500; font-family: 'Poppins', sans-serif; }
+    .company-pic { color: #495057; }
+    
+    /* Status Perusahaan */
+    .status-perusahaan-pending-approval { background-color: #ffc107; color: #212529; }
+    .status-perusahaan-active { background-color: #28a745; color: #fff; }
+    .status-perusahaan-inactive { background-color: #6c757d; color: #fff; }
 
-    .data-table td.actions-cell .btn {
-        margin-right: 5px;
-        margin-bottom: 5px;
-    }
-    .data-table td small { font-size: 0.85em; color: #555; display: block; }
-
-
-    /* Styling untuk status akun perusahaan (ENUM: 'pending_approval','active','inactive') */
-    .status-akun { /* Class umum */
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: bold;
-        color: #fff;
-        white-space: nowrap;
-    }
-    .status-perusahaan-pending-approval { background-color: #ffc107; color: #212529; } /* Kuning */
-    .status-perusahaan-active { background-color: #28a745; } /* Hijau */
-    .status-perusahaan-inactive { background-color: #6c757d; } /* Abu-abu */
-
-    /* Pastikan warna tombol dari CSS global sudah ada */
+    /* Salin semua CSS dari file pengguna_mahasiswa_kelola.php di sini */
+    .user-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+    .user-card { background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); display: flex; flex-direction: column; overflow: hidden; position: relative; transition: all 0.3s ease; }
+    .user-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    .card-header-status { position: absolute; top: 15px; right: 15px; padding: 5px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 600; color: #fff; }
+    .card-main-info { padding: 2rem 1.5rem 1.5rem; text-align: center; border-bottom: 1px solid #dee2e6; }
+    .user-avatar { width: 80px; height: 80px; border-radius: 50%; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 2.5em; font-weight: 600; margin-bottom: 1rem; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .user-name { margin: 0; font-size: 1.3em; font-weight: 600; color: #343a40; }
+    .user-id { margin: 0; color: #6c757d; font-family: monospace; }
+    .card-contact-info { padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9em; }
+    .card-contact-info span { color: #495057; word-break: break-all; }
+    .card-actions { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; background-color: #f8f9fa; border-top: 1px solid #dee2e6; }
+    .card-actions .btn { padding: 1rem; border-radius: 0; text-align: center; text-decoration: none; font-weight: 600; transition: background-color 0.3s ease; }
+    .btn.btn-secondary { border-right: 1px solid #dee2e6; color: #495057; }
+    .btn.btn-secondary:hover { background-color: #e2e6ea; }
+    .btn.btn-primary { background-color: transparent; color: #007bff; }
+    .btn.btn-primary:hover { background-color: #007bff; color: #fff; }
+    .dropdown { position: relative; }
+    .dropdown-toggle::after { content: ' ▼'; font-size: 0.7em; }
+    .dropdown-menu { display: none; position: absolute; bottom: 100%; right: 0; background-color: white; min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 1; border-radius: 8px; overflow: hidden; }
+    .dropdown-menu a { color: black; padding: 12px 16px; text-decoration: none; display: block; }
+    .dropdown-menu a:hover { background-color: #f1f1f1; }
+    .dropdown:hover .dropdown-menu { display: block; }
+    .filter-search-container { margin-bottom: 2rem; }
+    .search-wrapper { position: relative; max-width: 500px; }
+    #userSearchInput { width: 100%; padding: 12px 20px 12px 45px; border: 1px solid #dee2e6; border-radius: 50px; font-size: 1em; transition: all 0.3s ease; }
+    #userSearchInput:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); outline: none; }
+    .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 1.2em; color: #6c757d; }
 </style>
+
+<script>
+// Menggunakan skrip pencarian yang sama persis
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearchInput');
+    const userCardGrid = document.getElementById('userCardGrid');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    
+    if (searchInput && userCardGrid) {
+        const userCards = userCardGrid.querySelectorAll('.user-card');
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let visibleCards = 0;
+            userCards.forEach(function(card) {
+                const companyName = card.querySelector('.user-name').textContent.toLowerCase();
+                const companyBidang = card.querySelector('.company-bidang').textContent.toLowerCase();
+                if (companyName.includes(searchTerm) || companyBidang.includes(searchTerm)) {
+                    card.style.display = 'flex';
+                    visibleCards++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            if (noResultsMessage) {
+                noResultsMessage.style.display = (visibleCards === 0) ? 'block' : 'none';
+            }
+        });
+    }
+});
+</script>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli)) {
-    $conn->close();
-}
+if (isset($conn)) { $conn->close(); }
 ?>

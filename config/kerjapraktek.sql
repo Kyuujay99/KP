@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 27, 2025 at 06:48 PM
+-- Generation Time: Jun 07, 2025 at 02:50 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.16
 
@@ -207,6 +207,8 @@ CREATE TABLE `mahasiswa` (
   `no_hp` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `prodi` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `angkatan` int DEFAULT NULL,
+  `ipk` decimal(3,2) DEFAULT '0.00',
+  `sks_lulus` int DEFAULT '0',
   `status_akun` enum('pending_verification','active','suspended') COLLATE utf8mb4_general_ci DEFAULT 'pending_verification',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -216,17 +218,17 @@ CREATE TABLE `mahasiswa` (
 -- Dumping data for table `mahasiswa`
 --
 
-INSERT INTO `mahasiswa` (`nim`, `password`, `nama`, `email`, `no_hp`, `prodi`, `angkatan`, `status_akun`, `created_at`, `updated_at`) VALUES
-('NIM22006', 'pass_mhs_6', 'Fiona Glenanne', 'fiona.g@student.kampus.ac.id', '081200000006', 'Teknik Informatika', 2022, 'suspended', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM22010', 'pass_mhs_10', 'Jolyne Cujoh', 'jolyne.c@student.kampus.ac.id', '081200000010', 'Teknik Elektro', 2022, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM23003', 'pass_mhs_3', 'Charlie Brown', 'charlie.b@student.kampus.ac.id', '081200000003', 'Teknik Informatika', 2023, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM23004', 'pass_mhs_4', 'Diana Prince', 'diana.p@student.kampus.ac.id', '081200000004', 'Sistem Informasi', 2023, 'pending_verification', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM23008', 'pass_mhs_8', 'Hinata Hyuga', 'hinata.h@student.kampus.ac.id', '081200000008', 'Sistem Informasi', 2023, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM24001', 'pass_mhs_1', 'Ahmad Zulkifli', 'ahmad.z@student.kampus.ac.id', '081200000001', 'Teknik Informatika', 2024, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM24002', 'pass_mhs_2', 'Bella Swan', 'bella.s@student.kampus.ac.id', '081200000002', 'Sistem Informasi', 2024, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM24005', 'pass_mhs_5', 'Eren Yeager', 'eren.y@student.kampus.ac.id', '081200000005', 'Teknik Elektro', 2024, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM24007', 'pass_mhs_7', 'Gojo Satoru', 'gojo.s@student.kampus.ac.id', '081200000007', 'Teknik Mesin', 2024, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
-('NIM24009', 'pass_mhs_9', 'Itadori Yuji', 'itadori.y@student.kampus.ac.id', '081200000009', 'Teknik Informatika', 2024, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35');
+INSERT INTO `mahasiswa` (`nim`, `password`, `nama`, `email`, `no_hp`, `prodi`, `angkatan`, `ipk`, `sks_lulus`, `status_akun`, `created_at`, `updated_at`) VALUES
+('NIM22006', 'pass_mhs_6', 'Fiona Glenanne', 'fiona.g@student.kampus.ac.id', '081200000006', 'Teknik Informatika', 2022, 3.00, 106, 'suspended', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM22010', 'pass_mhs_10', 'Jolyne Cujoh', 'jolyne.c@student.kampus.ac.id', '081200000010', 'Teknik Elektro', 2022, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM23003', 'pass_mhs_3', 'Charlie Brown', 'charlie.b@student.kampus.ac.id', '081200000003', 'Teknik Informatika', 2023, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM23004', 'pass_mhs_4', 'Diana Prince', 'diana.p@student.kampus.ac.id', '081200000004', 'Sistem Informasi', 2023, 0.00, 0, 'pending_verification', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM23008', 'pass_mhs_8', 'Hinata Hyuga', 'hinata.h@student.kampus.ac.id', '081200000008', 'Sistem Informasi', 2023, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM24001', 'pass_mhs_1', 'Ahmad Zulkifli', 'ahmad.z@student.kampus.ac.id', '081200000001', 'Teknik Informatika', 2024, 3.51, 110, 'active', '2025-05-27 18:38:35', '2025-06-07 14:32:21'),
+('NIM24002', 'pass_mhs_2', 'Bella Swan', 'bella.s@student.kampus.ac.id', '081200000002', 'Sistem Informasi', 2024, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM24005', 'pass_mhs_5', 'Eren Yeager', 'eren.y@student.kampus.ac.id', '081200000005', 'Teknik Elektro', 2024, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM24007', 'pass_mhs_7', 'Gojo Satoru', 'gojo.s@student.kampus.ac.id', '081200000007', 'Teknik Mesin', 2024, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35'),
+('NIM24009', 'pass_mhs_9', 'Itadori Yuji', 'itadori.y@student.kampus.ac.id', '081200000009', 'Teknik Informatika', 2024, 0.00, 0, 'active', '2025-05-27 18:38:35', '2025-05-27 18:38:35');
 
 -- --------------------------------------------------------
 

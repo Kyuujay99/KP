@@ -90,9 +90,6 @@ require_once '../includes/header.php';
 ?>
 
 <div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_dosen.php'; ?>
-
     <main class="main-content-area">
         <div class="list-container logbook-verifikasi-dosen-list">
             <h1><?php echo htmlspecialchars($page_title); ?></h1>

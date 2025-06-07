@@ -152,7 +152,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error_message = "Terjadi kesalahan dalam sistem. Silakan coba lagi. (Error: Statement)";
             // error_log("Statement preparation failed: " . $conn->error); // Catat error untuk admin
         }
-        $conn->close(); // Tutup koneksi database
+        // Pastikan $conn ada dan merupakan objek mysqli sebelum ditutup
+        if (isset($conn) && $conn instanceof mysqli) {
+            $conn->close(); // Tutup koneksi database
+        }
     } elseif (!$conn && !empty($sql)) {
         $error_message = "Tidak dapat terhubung ke database.";
     }

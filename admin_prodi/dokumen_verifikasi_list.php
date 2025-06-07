@@ -1,37 +1,24 @@
 <?php
-// /KP/admin_prodi/dokumen_verifikasi_list.php
+// /KP/admin_prodi/dokumen_verifikasi_list.php (Versi Final dan Lengkap)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-
-// 1. OTENTIKASI DAN OTORISASI
 require_once '../includes/auth_check.php';
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin_prodi') {
-    session_unset();
-    session_destroy();
     header("Location: /KP/index.php?error=unauthorized_admin");
     exit();
 }
-
-$admin_identifier = $_SESSION['user_id'];
-
-// Sertakan file koneksi database
 require_once '../config/db_connect.php';
 
-$list_dokumen_pending = [];
+$list_dokumen = [];
 $error_db = '';
-$filter_status_dokumen = isset($_GET['status_dokumen']) ? $_GET['status_dokumen'] : 'pending'; // Default filter 'pending'
+$filter_status_dokumen = isset($_GET['status_dokumen']) ? $_GET['status_dokumen'] : 'pending';
 
-// 2. AMBIL DATA DOKUMEN YANG MEMERLUKAN VERIFIKASI DARI DATABASE
-if ($conn && ($conn instanceof mysqli)) {
+if ($conn) {
     $sql = "SELECT
-                dk.id_dokumen, dk.id_pengajuan,
-                dk.nama_dokumen, dk.jenis_dokumen, dk.tanggal_upload,
-                dk.status_verifikasi_dokumen,
-                pk.judul_kp,
-                m.nim AS nim_mahasiswa,
-                m.nama AS nama_mahasiswa
+                dk.id_dokumen, dk.id_pengajuan, dk.nama_dokumen, dk.jenis_dokumen, dk.tanggal_upload,
+                dk.status_verifikasi_dokumen, pk.judul_kp, m.nim AS nim_mahasiswa, m.nama AS nama_mahasiswa
             FROM dokumen_kp dk
             JOIN pengajuan_kp pk ON dk.id_pengajuan = pk.id_pengajuan
             JOIN mahasiswa m ON pk.nim = m.nim";
@@ -43,165 +30,147 @@ if ($conn && ($conn instanceof mysqli)) {
         $params[] = $filter_status_dokumen;
         $types .= "s";
     }
-
-    $sql .= " ORDER BY dk.tanggal_upload ASC"; // Proses dokumen terlama dulu
+    $sql .= " ORDER BY dk.tanggal_upload ASC";
 
     $stmt = $conn->prepare($sql);
-
     if ($stmt) {
-        if (!empty($filter_status_dokumen) && $filter_status_dokumen !== 'semua') {
+        if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
         $stmt->execute();
         $result = $stmt->get_result();
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $list_dokumen_pending[] = $row;
-            }
+        while ($row = $result->fetch_assoc()) {
+            $list_dokumen[] = $row;
         }
         $stmt->close();
     } else {
-        $error_db = "Gagal menyiapkan query untuk mengambil data dokumen: " . (($conn->error) ? htmlspecialchars($conn->error) : "Kesalahan tidak diketahui.");
+        $error_db = "Gagal menyiapkan query: " . $conn->error;
     }
-} else {
-    $error_db = "Koneksi database gagal atau tidak valid.";
 }
 
-// Daftar status verifikasi dokumen untuk filter dropdown (sesuai ENUM)
 $opsi_filter_status_dokumen = [
-    'pending' => 'Pending (Menunggu Verifikasi)',
-    'disetujui' => 'Disetujui',
-    'revisi_diperlukan' => 'Revisi Diperlukan',
-    'ditolak' => 'Ditolak',
-    'semua' => 'Tampilkan Semua Status Dokumen'
+    'pending' => 'Pending', 'disetujui' => 'Disetujui',
+    'revisi_diperlukan' => 'Revisi Diperlukan', 'ditolak' => 'Ditolak',
+    'semua' => 'Tampilkan Semua'
 ];
-
-
-// Set judul halaman dan sertakan header
-$page_title = "Daftar Dokumen KP Menunggu Verifikasi";
-if(!empty($filter_status_dokumen) && $filter_status_dokumen !== 'semua') {
-    $page_title = "Dokumen KP Status: " . (isset($opsi_filter_status_dokumen[$filter_status_dokumen]) ? $opsi_filter_status_dokumen[$filter_status_dokumen] : ucfirst($filter_status_dokumen));
-} elseif ($filter_status_dokumen === 'semua') {
-    $page_title = "Semua Dokumen KP Terunggah";
-}
-
+$page_title = "Verifikasi Dokumen KP";
 require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_admin_prodi.php'; ?>
-
-    <main class="main-content-area">
-        <div class="list-container dokumen-verifikasi-list">
+<div class="main-content-full">
+    <div class="list-container">
+        <div class="list-header">
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <p>Halaman ini menampilkan daftar dokumen yang diunggah oleh mahasiswa terkait pengajuan Kerja Praktek mereka. Anda dapat memfilter berdasarkan status verifikasi dokumen.</p>
-            <hr>
-
-            <form action="/KP/admin_prodi/dokumen_verifikasi_list.php" method="GET" class="filter-form">
-                <div class="form-group">
-                    <label for="status_dokumen">Filter berdasarkan Status Dokumen:</label>
-                    <select name="status_dokumen" id="status_dokumen" onchange="this.form.submit()">
-                        <?php foreach ($opsi_filter_status_dokumen as $value => $text): ?>
-                            <option value="<?php echo $value; ?>" <?php echo ($filter_status_dokumen == $value) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($text); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php if(!empty($filter_status_dokumen) && $filter_status_dokumen !== 'pending'): // Tombol reset jika filter bukan default ?>
-                    <a href="/KP/admin_prodi/dokumen_verifikasi_list.php" class="btn btn-secondary btn-sm">Reset ke Pending</a>
-                <?php endif; ?>
-            </form>
-            <hr class="filter-hr">
-
-
-            <?php if (!empty($error_db)): ?>
-                <div class="message error">
-                    <p><?php echo $error_db; ?></p>
-                </div>
-            <?php endif; ?>
-
-            <?php if (empty($list_dokumen_pending) && empty($error_db)): ?>
-                <div class="message info">
-                    <p>Tidak ada dokumen yang ditemukan<?php echo (!empty($filter_status_dokumen) && $filter_status_dokumen !== 'semua') ? " dengan status '" . htmlspecialchars($opsi_filter_status_dokumen[$filter_status_dokumen]) . "'" : " yang menunggu verifikasi"; ?>.</p>
-                </div>
-            <?php elseif (!empty($list_dokumen_pending)): ?>
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>No.</th>
-                                <th>Tgl. Upload</th>
-                                <th>Nama Dokumen</th>
-                                <th>Jenis Dokumen</th>
-                                <th>Mahasiswa (NIM)</th>
-                                <th>Judul KP Terkait</th>
-                                <th>Status Dokumen</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php $counter = 1; ?>
-                            <?php foreach ($list_dokumen_pending as $dokumen): ?>
-                                <tr>
-                                    <td><?php echo $counter++; ?></td>
-                                    <td><?php echo date("d M Y H:i", strtotime($dokumen['tanggal_upload'])); ?></td>
-                                    <td><?php echo htmlspecialchars($dokumen['nama_dokumen']); ?></td>
-                                    <td><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $dokumen['jenis_dokumen']))); ?></td>
-                                    <td><?php echo htmlspecialchars($dokumen['nama_mahasiswa']); ?> (<?php echo htmlspecialchars($dokumen['nim_mahasiswa']); ?>)</td>
-                                    <td><small><?php echo htmlspecialchars($dokumen['judul_kp']); ?></small></td>
-                                    <td>
-                                        <span class="status-dokumen status-dokumen-<?php echo strtolower(str_replace([' ', '_'], '-', $dokumen['status_verifikasi_dokumen'])); ?>">
-                                            <?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $dokumen['status_verifikasi_dokumen']))); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="/KP/admin_prodi/dokumen_verifikasi_form.php?id_dokumen=<?php echo $dokumen['id_dokumen']; ?>&id_pengajuan=<?php echo $dokumen['id_pengajuan']; ?>" class="btn btn-primary btn-sm">
-                                            Verifikasi/Detail
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-
+            <p>Periksa dan berikan status verifikasi untuk semua dokumen yang diunggah oleh mahasiswa.</p>
         </div>
-    </main>
 
+        <form action="dokumen_verifikasi_list.php" method="GET" class="filter-form">
+            <div class="form-group">
+                <label for="status_dokumen">Filter Status:</label>
+                <select name="status_dokumen" id="status_dokumen" onchange="this.form.submit()">
+                    <?php foreach ($opsi_filter_status_dokumen as $value => $text): ?>
+                        <option value="<?php echo $value; ?>" <?php echo ($filter_status_dokumen == $value) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($text); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php if(!empty($filter_status_dokumen) && $filter_status_dokumen !== 'pending'): ?>
+                <a href="dokumen_verifikasi_list.php" class="btn btn-secondary btn-sm">Tampilkan Pending Saja</a>
+            <?php endif; ?>
+        </form>
+
+        <?php if (!empty($error_db)): ?>
+            <div class="message error"><p><?php echo $error_db; ?></p></div>
+        <?php endif; ?>
+
+        <?php if (empty($list_dokumen) && empty($error_db)): ?>
+            <div class="message info">
+                <h4>Tidak Ada Dokumen</h4>
+                <p>Tidak ada dokumen yang cocok dengan filter status yang dipilih.</p>
+            </div>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mahasiswa</th>
+                            <th>Detail Dokumen</th>
+                            <th>Terkait KP</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($list_dokumen as $doc): ?>
+                            <tr>
+                                <td>
+                                    <div class="mahasiswa-info">
+                                        <div class="mahasiswa-avatar"><?php echo strtoupper(substr($doc['nama_mahasiswa'], 0, 1)); ?></div>
+                                        <div>
+                                            <div class="mahasiswa-nama"><?php echo htmlspecialchars($doc['nama_mahasiswa']); ?></div>
+                                            <div class="mahasiswa-nim"><?php echo htmlspecialchars($doc['nim_mahasiswa']); ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="dokumen-nama"><?php echo htmlspecialchars($doc['nama_dokumen']); ?></div>
+                                    <div class="dokumen-jenis"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $doc['jenis_dokumen']))); ?></div>
+                                    <div class="tanggal-text">Diupload: <?php echo date("d M Y, H:i", strtotime($doc['tanggal_upload'])); ?></div>
+                                </td>
+                                <td class="judul-kp-cell">
+                                    <a href="pengajuan_kp_detail_admin.php?id_pengajuan=<?php echo $doc['id_pengajuan']; ?>" title="Lihat Detail KP Terkait">
+                                        <?php echo htmlspecialchars($doc['judul_kp']); ?>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-dokumen-<?php echo strtolower(htmlspecialchars($doc['status_verifikasi_dokumen'])); ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($doc['status_verifikasi_dokumen']))); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="dokumen_verifikasi_form.php?id_dokumen=<?php echo $doc['id_dokumen']; ?>&id_pengajuan=<?php echo $doc['id_pengajuan']; ?>" class="btn btn-primary btn-sm">
+                                        Verifikasi
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS umum sudah ada dari header, sidebar, tabel, message, btn, filter-form */
-    .dokumen-verifikasi-list h1 { margin-top: 0; margin-bottom: 10px; }
-    .dokumen-verifikasi-list hr { margin-bottom: 20px; }
-    .dokumen-verifikasi-list p { margin-bottom: 15px; }
-    .filter-hr { margin-top:0; margin-bottom:25px; }
+/* Menggunakan gaya dari halaman list lainnya dan disesuaikan */
+.list-container { max-width: 1400px; margin: 20px auto; padding: 2rem; }
+.list-header { margin-bottom: 1.5rem; text-align: center; }
+.table-responsive { background-color: #fff; border-radius: var(--border-radius); box-shadow: var(--card-shadow); overflow: hidden; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th, .data-table td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
+.data-table th { background-color: #f8f9fa; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; }
+.data-table tbody tr:hover { background-color: #f1f7ff; }
+.judul-kp-cell a { text-decoration: none; color: var(--primary-color); font-weight: 500; }
+.judul-kp-cell a:hover { text-decoration: underline; }
 
+.mahasiswa-info { display: flex; align-items: center; gap: 15px; }
+.mahasiswa-avatar { width: 45px; height: 45px; border-radius: 50%; background-color: var(--primary-color); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 1.2em; font-weight: 600; flex-shrink: 0; }
+.mahasiswa-nama { font-weight: 600; }
+.mahasiswa-nim { font-size: 0.9em; color: #6c757d; }
+.dokumen-nama { font-weight: 600; }
+.dokumen-jenis { font-size: 0.9em; color: #6c757d; }
+.tanggal-text { font-size: 0.85em; color: #6c757d; margin-top: 5px; }
+.filter-form { display: flex; gap: 1rem; align-items: center; background-color: #fff; padding: 1rem; border-radius: var(--border-radius); margin-bottom: 2rem; box-shadow: var(--card-shadow); }
 
-    /* Styling untuk status dokumen (pastikan konsisten atau global) */
-    .status-dokumen {
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: bold;
-        color: #212529; /* Default warna teks untuk status */
-        white-space: nowrap;
-    }
-    .status-dokumen-pending { background-color: #ffc107; /* Kuning */ }
-    .status-dokumen-disetujui { background-color: #28a745; color: #fff; /* Hijau */ }
-    .status-dokumen-revisi-diperlukan { background-color: #fd7e14; color: #fff; /* Orange */ }
-    .status-dokumen-ditolak { background-color: #dc3545; color: #fff; /* Merah */ }
-    .data-table td small { font-size: 0.9em; color: #555; }
-
+.status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8em; font-weight: 600; }
+.status-dokumen-pending { background-color: #ffc107; color: #212529; }
+.status-dokumen-disetujui { background-color: #28a745; color: #fff; }
+.status-dokumen-revisi_diperlukan { background-color: #fd7e14; color: #fff; }
+.status-dokumen-ditolak { background-color: #dc3545; color: #fff; }
 </style>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli)) {
-    $conn->close();
-}
+if (isset($conn)) { $conn->close(); }
 ?>

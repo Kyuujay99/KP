@@ -1,16 +1,12 @@
 <?php
-// /KP/mahasiswa/profil.php
+// /KP/mahasiswa/profil.php (Versi Diperbarui)
 
-// Mulai session (atau lanjutkan session yang ada).
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
 // 1. OTENTIKASI DAN OTORISASI
-// Sertakan file untuk memeriksa apakah pengguna sudah login.
 require_once '../includes/auth_check.php';
-
-// Pastikan peran pengguna adalah 'mahasiswa'.
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'mahasiswa') {
     session_unset();
     session_destroy();
@@ -18,20 +14,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'mahasiswa') {
     exit();
 }
 
-// 2. PENGAMBILAN DATA PENGGUNA (DARI SESSION DAN DATABASE)
-$nim_mahasiswa = $_SESSION['user_id']; // NIM dari session
-
-// Sertakan file koneksi database untuk mengambil detail profil
+$nim_mahasiswa = $_SESSION['user_id'];
 require_once '../config/db_connect.php';
 
-$mahasiswa_data = null; // Variabel untuk menyimpan data profil mahasiswa
-$error_db = ''; // Variabel untuk menyimpan pesan error database
+$mahasiswa_data = null;
+$error_db = '';
 
 if ($conn) {
-    $sql = "SELECT nim, nama, email, no_hp, prodi, angkatan, status_akun, created_at 
-            FROM mahasiswa 
-            WHERE nim = ? 
-            LIMIT 1";
+    $sql = "SELECT nim, nama, email, no_hp, prodi, angkatan, status_akun, created_at, ipk, sks_lulus FROM mahasiswa WHERE nim = ? LIMIT 1";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
         $stmt->bind_param("s", $nim_mahasiswa);
@@ -40,184 +30,151 @@ if ($conn) {
         if ($result->num_rows === 1) {
             $mahasiswa_data = $result->fetch_assoc();
         } else {
-            // Seharusnya tidak terjadi jika user_id di session valid
             $error_db = "Data profil tidak ditemukan.";
         }
         $stmt->close();
     } else {
         $error_db = "Gagal menyiapkan query: " . $conn->error;
     }
-    // Jangan tutup koneksi $conn di sini jika header/footer mungkin menggunakannya atau ada query lain.
-    // $conn->close(); // Sebaiknya ditutup di akhir script atau di footer.
 } else {
     $error_db = "Gagal terhubung ke database.";
 }
 
-// 3. SET JUDUL HALAMAN DAN SERTAKAN FILE HEADER
-$page_title = "Profil Saya";
-require_once '../includes/header.php'; // Memuat header.php
+$page_title = "Profil Mahasiswa";
+if (is_array($mahasiswa_data) && !empty($mahasiswa_data['nama'])) {
+    $page_title = "Profil: " . htmlspecialchars($mahasiswa_data['nama']);
+}
+require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
+<div class="main-content-full">
+    <div class="profile-page-container">
+        
+        <?php if (!empty($error_db)): ?>
+            <div class="message error"><p><?php echo htmlspecialchars($error_db); ?></p></div>
+        <?php endif; ?>
 
-    <?php require_once '../includes/sidebar_mahasiswa.php'; // Memanggil sidebar mahasiswa ?>
-
-    <main class="main-content-area">
-        <div class="profile-container">
-            <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <hr>
-
-            <?php if (!empty($error_db)): ?>
-                <div class="message error">
-                    <p><?php echo htmlspecialchars($error_db); ?></p>
+        <?php if (is_array($mahasiswa_data)): ?>
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-avatar">
+                        <?php echo strtoupper(substr($mahasiswa_data['nama'], 0, 1)); ?>
+                    </div>
+                    <div class="profile-name-role">
+                        <h2><?php echo htmlspecialchars($mahasiswa_data['nama']); ?></h2>
+                        <p>Mahasiswa Program Studi <?php echo htmlspecialchars($mahasiswa_data['prodi']); ?></p>
+                    </div>
+                    <a href="/KP/mahasiswa/profil_edit.php" class="btn btn-primary-outline">
+                        <i class="icon-pencil"></i> Edit Profil
+                    </a>
                 </div>
-            <?php elseif ($mahasiswa_data): ?>
-                <div class="profile-details">
-                    <h3>Informasi Pribadi</h3>
-                    <dl>
-                        <dt>NIM:</dt>
-                        <dd><?php echo htmlspecialchars($mahasiswa_data['nim']); ?></dd>
-
-                        <dt>Nama Lengkap:</dt>
-                        <dd><?php echo htmlspecialchars($mahasiswa_data['nama']); ?></dd>
-
-                        <dt>Email:</dt>
-                        <dd><?php echo htmlspecialchars($mahasiswa_data['email']); ?></dd>
-
-                        <dt>Nomor HP:</dt>
-                        <dd><?php echo $mahasiswa_data['no_hp'] ? htmlspecialchars($mahasiswa_data['no_hp']) : '-'; ?></dd>
-                    </dl>
-
-                    <h3>Informasi Akademik</h3>
-                    <dl>
-                        <dt>Program Studi:</dt>
-                        <dd><?php echo $mahasiswa_data['prodi'] ? htmlspecialchars($mahasiswa_data['prodi']) : '-'; ?></dd>
-
-                        <dt>Angkatan:</dt>
-                        <dd><?php echo $mahasiswa_data['angkatan'] ? htmlspecialchars($mahasiswa_data['angkatan']) : '-'; ?></dd>
-                    </dl>
-
-                    <h3>Informasi Akun</h3>
-                    <dl>
-                        <dt>Status Akun:</dt>
-                        <dd class="status-akun-<?php echo strtolower(htmlspecialchars($mahasiswa_data['status_akun'])); ?>">
-                            <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($mahasiswa_data['status_akun']))); ?>
-                        </dd>
-
-                        <dt>Tanggal Terdaftar:</dt>
-                        <dd><?php echo date("d F Y, H:i", strtotime($mahasiswa_data['created_at'])); ?></dd>
-                    </dl>
+                <div class="profile-card-body">
+                    <div class="details-section">
+                        <h3><i class="icon-detail"></i>Informasi Pribadi & Kontak</h3>
+                        <div class="details-grid">
+                            <div class="detail-item"><span class="detail-label">NIM</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['nim']); ?></span></div>
+                            <div class="detail-item"><span class="detail-label">Email</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['email']); ?></span></div>
+                            <div class="detail-item"><span class="detail-label">Nomor HP</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['no_hp'] ?: '-'); ?></span></div>
+                        </div>
+                    </div>
+                    <div class="details-section">
+                        <h3><i class="icon-detail"></i>Informasi Akademik</h3>
+                        <div class="details-grid">
+                            <div class="detail-item"><span class="detail-label">Program Studi</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['prodi']); ?></span></div>
+                            <div class="detail-item"><span class="detail-label">Angkatan</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['angkatan']); ?></span></div>
+                            <div class="detail-item"><span class="detail-label">SKS Lulus</span><span class="detail-value"><?php echo htmlspecialchars($mahasiswa_data['sks_lulus'] ?? '0'); ?></span></div>
+                            <div class="detail-item"><span class="detail-label">IPK</span><span class="detail-value"><?php echo htmlspecialchars(number_format($mahasiswa_data['ipk'] ?? 0, 2)); ?></span></div>
+                        </div>
+                    </div>
+                     <div class="details-section">
+                        <h3><i class="icon-detail"></i>Informasi Akun</h3>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Status Akun</span>
+                                <span class="detail-value">
+                                    <span class="status-badge status-<?php echo strtolower(htmlspecialchars($mahasiswa_data['status_akun'])); ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($mahasiswa_data['status_akun']))); ?>
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="detail-item"><span class="detail-label">Tanggal Terdaftar</span><span class="detail-value"><?php echo date("d F Y", strtotime($mahasiswa_data['created_at'])); ?></span></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="profile-actions">
-                    <p><em>Fitur edit profil akan tersedia nanti.</em></p>
-                </div>
-            <?php else: ?>
-                <div class="message info">
-                    <p>Tidak ada data profil yang dapat ditampilkan.</p>
-                </div>
-            <?php endif; ?>
+            </div>
+        <?php elseif(empty($error_db)): ?>
+            <div class="message info"><p>Memuat data profil...</p></div>
+        <?php endif; ?>
+        
+    </div>
+</div>
 
-        </div> </main> </div> <style>
-    /* CSS untuk layout sidebar dan konten utama sudah ada di dashboard.php atau header.php jika diglobalisasi */
-    /* Mari asumsikan .page-layout-wrapper, .sidebar-mahasiswa, .main-content-area sudah di-style */
+<style>
+    .icon-pencil::before { content: "✏️ "; }
+    .icon-detail::before { content: "🔹"; margin-right: 8px; }
 
-    .profile-container {
-        background-color: #fff; /* Jika .main-content-area belum punya background */
-        padding: 20px; /* Jika .main-content-area belum punya padding */
-        border-radius: 8px; /* Jika .main-content-area belum punya border-radius */
-        /* box-shadow: 0 2px 10px rgba(0,0,0,0.07); */ /* Jika .main-content-area belum punya shadow */
+    .main-content-full { padding: 2rem; }
+    .profile-page-container { max-width: 900px; margin: auto; }
+    .profile-card {
+        background-color: #fff;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
     }
+    .profile-card-header {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        padding: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .profile-avatar {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        background-color: var(--primary-color); color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5em; font-weight: 600; flex-shrink: 0;
+    }
+    .profile-name-role { flex-grow: 1; }
+    .profile-name-role h2 { margin: 0; font-size: 1.8em; color: var(--dark-color); }
+    .profile-name-role p { margin: 0; color: var(--secondary-color); font-weight: 500; }
+    .btn.btn-primary-outline {
+        color: var(--primary-color); background-color: transparent; border: 2px solid var(--primary-color);
+        font-weight: bold; padding: 8px 18px; border-radius: 8px; text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    .btn.btn-primary-outline:hover { background-color: var(--primary-color); color: #fff; }
 
-    .profile-container h1 {
-        color: #333;
-        margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 1.8em; /* Sedikit lebih besar dari h2 dashboard */
+    .profile-card-body { padding: 1rem 2rem 2rem; }
+    .details-section { margin-top: 2rem; }
+    .details-section h3 {
+        font-size: 1.3em; color: var(--dark-color); margin-bottom: 1.5rem; padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;
     }
-    .profile-container hr {
-        margin-bottom: 25px;
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1rem 2rem;
     }
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .detail-label { font-size: 0.9em; color: var(--secondary-color); }
+    .detail-value { font-size: 1.1em; font-weight: 500; color: var(--dark-color); }
 
-    .profile-details h3 {
-        font-size: 1.2em;
-        color: #007bff; /* Biru untuk sub-judul */
-        margin-top: 20px;
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid #eee;
+    .status-badge {
+        padding: 5px 12px; border-radius: 20px; font-size: 0.9em; font-weight: 600;
+        color: #fff; display: inline-block;
     }
-    .profile-details dl {
-        margin-bottom: 15px;
-    }
-    .profile-details dt { /* Definition Term (Label) */
-        font-weight: bold;
-        color: #555;
-        float: left; /* Membuat label di kiri */
-        width: 150px; /* Lebar tetap untuk label */
-        clear: left; /* Pastikan setiap dt memulai baris baru di kiri */
-        margin-bottom: 8px;
-    }
-    .profile-details dd { /* Definition Description (Value) */
-        margin-left: 160px; /* Memberi ruang setelah dt */
-        margin-bottom: 8px;
-        color: #333;
-    }
-
-    /* Styling untuk status akun */
-    .status-akun-active { color: green; font-weight: bold; }
-    .status-akun-pending_verification { color: orange; font-weight: bold; }
-    .status-akun-suspended { color: red; font-weight: bold; }
-
-    .profile-actions {
-        margin-top: 30px;
-        padding-top: 20px;
-        border-top: 1px solid #eee;
-    }
-    .profile-actions p em {
-        font-size: 0.9em;
-        color: #777;
-    }
-    
-    /* Message styling (jika belum global di header.php) */
-    .message { padding: 10px 15px; margin-bottom: 20px; border-radius: 5px; border: 1px solid transparent; }
-    .message.error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
-    .message.info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
-
-    /* Pastikan .btn dan .btn-primary sudah ada di CSS global (header.php) */
-    .btn {
-        display: inline-block;
-        font-weight: 400;
-        color: #212529;
-        text-align: center;
-        vertical-align: middle;
-        cursor: pointer;
-        user-select: none;
-        background-color: transparent;
-        border: 1px solid transparent;
-        padding: .375rem .75rem;
-        font-size: 1rem;
-        line-height: 1.5;
-        border-radius: .25rem;
-        text-decoration: none;
-    }
-    .btn-primary {
-        color: #fff;
-        background-color: #007bff;
-        border-color: #007bff;
-    }
-    .btn-primary:hover {
-        color: #fff;
-        background-color: #0069d9;
-        border-color: #0062cc;
-    }
-
+    .status-pending_verification { background-color: #ffc107; color: #212529;}
+    .status-active { background-color: #28a745; }
+    .status-suspended { background-color: #dc3545; }
 </style>
 
 <?php
-// 4. SERTAKAN FILE FOOTER
-require_once '../includes/footer.php'; // Memuat footer.php
-
-// Tutup koneksi database jika dibuka di halaman ini
+require_once '../includes/footer.php';
 if (isset($conn) && $conn) {
     $conn->close();
 }
