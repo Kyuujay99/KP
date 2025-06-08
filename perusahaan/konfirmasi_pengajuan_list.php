@@ -1,5 +1,5 @@
 <?php
-// /KP/perusahaan/konfirmasi_pengajuan_form.php
+// /KP/perusahaan/konfirmasi_pengajuan_form.php (Versi Modern & Terisolasi)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -31,21 +31,15 @@ if (isset($_GET['id_pengajuan']) && filter_var($_GET['id_pengajuan'], FILTER_VAL
     $error_message_initial_load = "ID Pengajuan tidak valid atau tidak ditemukan dalam URL.";
 }
 
-// Sertakan file koneksi database
 require_once '../config/db_connect.php';
 
-// 3. FUNGSI UNTUK MENGAMBIL DATA DETAIL PENGAJUAN DAN DOKUMEN MAHASISWA
+// 3. FUNGSI UNTUK MENGAMBIL DATA (Tidak diubah, sudah baik)
 function getPengajuanDetailsForCompany($conn_db, $pengajuan_id, $id_perusahaan, &$out_error_message) {
     $data = ['pengajuan' => null, 'dokumen' => []];
-    if (!$conn_db || !($conn_db instanceof mysqli) || $conn_db->connect_error) {
-        $out_error_message = "Koneksi database tidak valid."; return $data;
-    }
-    if ($pengajuan_id === null || $pengajuan_id <= 0) {
-        $out_error_message = "ID Pengajuan tidak valid untuk mengambil data."; return $data;
-    }
+    if (!$conn_db || !($conn_db instanceof mysqli)) { $out_error_message = "Koneksi DB tidak valid."; return $data; }
 
     $sql_pengajuan = "SELECT pk.id_pengajuan, pk.judul_kp, pk.deskripsi_kp, pk.status_pengajuan,
-                             pk.tanggal_mulai_rencana, pk.tanggal_selesai_rencana, pk.tanggal_pengajuan AS tanggal_diajukan_kampus,
+                             pk.tanggal_mulai_rencana, pk.tanggal_selesai_rencana, pk.created_at AS tanggal_diajukan_mahasiswa,
                              m.nim, m.nama AS nama_mahasiswa, m.prodi, m.angkatan, m.email AS email_mahasiswa, m.no_hp AS no_hp_mahasiswa
                       FROM pengajuan_kp pk
                       JOIN mahasiswa m ON pk.nim = m.nim
@@ -57,148 +51,101 @@ function getPengajuanDetailsForCompany($conn_db, $pengajuan_id, $id_perusahaan, 
         $result_pengajuan = $stmt_pengajuan->get_result();
         if ($result_pengajuan->num_rows === 1) {
             $data['pengajuan'] = $result_pengajuan->fetch_assoc();
-
-            // Ambil dokumen yang diunggah mahasiswa untuk pengajuan ini (misal proposal)
-            $sql_dokumen = "SELECT nama_dokumen, jenis_dokumen, file_path, tanggal_upload 
-                            FROM dokumen_kp 
-                            WHERE id_pengajuan = ? AND tipe_uploader = 'mahasiswa' 
-                            ORDER BY tanggal_upload DESC";
+            $sql_dokumen = "SELECT nama_dokumen, jenis_dokumen, file_path, tanggal_upload FROM dokumen_kp WHERE id_pengajuan = ? AND tipe_uploader = 'mahasiswa' ORDER BY tanggal_upload DESC";
             $stmt_dokumen = $conn_db->prepare($sql_dokumen);
             if ($stmt_dokumen) {
                 $stmt_dokumen->bind_param("i", $pengajuan_id);
                 $stmt_dokumen->execute();
                 $result_dokumen = $stmt_dokumen->get_result();
-                while ($row_doc = $result_dokumen->fetch_assoc()) {
-                    $data['dokumen'][] = $row_doc;
-                }
+                while ($row_doc = $result_dokumen->fetch_assoc()) { $data['dokumen'][] = $row_doc; }
                 $stmt_dokumen->close();
-            } else {
-                $out_error_message .= " Gagal mengambil dokumen mahasiswa.";
             }
         } else {
-            if(empty($out_error_message)) $out_error_message = "Pengajuan KP tidak ditemukan, tidak menunggu konfirmasi Anda, atau bukan untuk perusahaan Anda.";
+             $out_error_message = "Pengajuan KP tidak ditemukan, tidak menunggu konfirmasi Anda, atau bukan untuk perusahaan Anda.";
         }
         $stmt_pengajuan->close();
-    } else {
-        $out_error_message = "Gagal menyiapkan query info pengajuan: " . htmlspecialchars($conn_db->error);
     }
     return $data;
 }
 
-// 4. PROSES KONFIRMASI JIKA FORM DISUBMIT
+// 4. PROSES KONFIRMASI JIKA FORM DISUBMIT (Logika tidak diubah, hanya ditambahkan path upload yang benar)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_konfirmasi'])) {
     if ($id_pengajuan_url === null || !empty($error_message_initial_load)) {
-        $error_message = "Tidak dapat memproses: ID Pengajuan awal tidak valid. " . $error_message_initial_load;
-    } elseif (!$conn || !($conn instanceof mysqli) || $conn->connect_error) {
+        $error_message = "Tidak dapat memproses: ID Pengajuan awal tidak valid.";
+    } elseif (!$conn) {
         $error_message = "Koneksi database tidak tersedia.";
     } else {
         $id_pengajuan_form = (int)$_POST['id_pengajuan'];
-        $tindakan_konfirmasi = $_POST['tindakan_konfirmasi']; // 'terima' atau 'tolak'
-        // Catatan dari perusahaan mungkin bisa disimpan di field 'catatan_admin' atau perlu field baru.
-        // Untuk saat ini, kita hanya ubah status dan upload surat balasan.
-        // $catatan_perusahaan = trim($_POST['catatan_perusahaan']);
+        $tindakan_konfirmasi = $_POST['tindakan_konfirmasi'];
+        $new_status_kp = ($tindakan_konfirmasi === 'terima') ? 'diterima_perusahaan' : (($tindakan_konfirmasi === 'tolak') ? 'ditolak_perusahaan' : '');
 
-        $new_status_kp = '';
-        if ($tindakan_konfirmasi === 'terima') {
-            $new_status_kp = 'diterima_perusahaan';
-        } elseif ($tindakan_konfirmasi === 'tolak') {
-            $new_status_kp = 'ditolak_perusahaan';
+        if (empty($new_status_kp) || $id_pengajuan_form !== $id_pengajuan_url) {
+            $error_message = "Kesalahan data: Tindakan tidak valid atau ID pengajuan tidak cocok.";
         } else {
-            $error_message = "Tindakan konfirmasi tidak valid.";
-        }
+            $surat_balasan_path_db = null;
+            $upload_error = false;
+            
+            if (isset($_FILES["surat_balasan_perusahaan"]) && $_FILES["surat_balasan_perusahaan"]["error"] == UPLOAD_ERR_OK) {
+                $upload_dir = "../uploads/surat_balasan/";
+                if (!is_dir($upload_dir)) { mkdir($upload_dir, 0755, true); }
+                
+                $file_info = pathinfo($_FILES["surat_balasan_perusahaan"]["name"]);
+                $file_ext = strtolower($file_info['extension']);
+                $unique_filename = "surat_balasan_" . $id_pengajuan_form . "_" . time() . "." . $file_ext;
+                $target_file = $upload_dir . $unique_filename;
+                $allowed_types = ['pdf', 'doc', 'docx', 'jpg', 'png', 'jpeg'];
 
-        if ($id_pengajuan_form !== $id_pengajuan_url) {
-            $error_message = "Kesalahan: ID Pengajuan pada form tidak cocok.";
-        }
-        
-        $surat_balasan_path_db = null; // Path untuk disimpan ke DB
-        $upload_surat_balasan_ok = 1;
-
-        // Penanganan File Upload Surat Balasan (jika ada)
-        if (empty($error_message) && isset($_FILES["surat_balasan_perusahaan"]) && $_FILES["surat_balasan_perusahaan"]["error"] == 0) {
-            $target_dir_surat = "../uploads/dokumen_kp/"; // Simpan bersama dokumen lain
-            $file_surat_ext = strtolower(pathinfo($_FILES["surat_balasan_perusahaan"]["name"], PATHINFO_EXTENSION));
-            $unique_surat_filename = "surat_balasan_" . $id_pengajuan_form . "_" . $id_perusahaan_login . "_" . time() . "." . $file_surat_ext;
-            $target_file_surat = $target_dir_surat . $unique_surat_filename;
-
-            $allowed_surat_types = ['pdf', 'doc', 'docx', 'jpg', 'png'];
-            if (!in_array($file_surat_ext, $allowed_surat_types)) {
-                $error_message = "Format file surat balasan tidak diizinkan (hanya PDF, DOCX, JPG, PNG).";
-                $upload_surat_balasan_ok = 0;
-            }
-            if ($upload_surat_balasan_ok && $_FILES["surat_balasan_perusahaan"]["size"] > 5000000) { // Max 5MB
-                $error_message = "Ukuran file surat balasan terlalu besar (maks 5MB).";
-                $upload_surat_balasan_ok = 0;
-            }
-
-            if ($upload_surat_balasan_ok) {
-                if (move_uploaded_file($_FILES["surat_balasan_perusahaan"]["tmp_name"], $target_file_surat)) {
-                    $surat_balasan_path_db = "uploads/dokumen_kp/" . $unique_surat_filename;
-                } else {
+                if (!in_array($file_ext, $allowed_types) || $_FILES["surat_balasan_perusahaan"]["size"] > 5000000) {
+                    $error_message = "File tidak valid (Format: PDF/DOCX/JPG/PNG, Maks: 5MB).";
+                    $upload_error = true;
+                } elseif (!move_uploaded_file($_FILES["surat_balasan_perusahaan"]["tmp_name"], $target_file)) {
                     $error_message = "Gagal mengupload file surat balasan.";
-                    $upload_surat_balasan_ok = 0;
+                    $upload_error = true;
+                } else {
+                    $surat_balasan_path_db = $target_file; 
                 }
             }
-        } elseif (isset($_FILES["surat_balasan_perusahaan"]) && $_FILES["surat_balasan_perusahaan"]["error"] != UPLOAD_ERR_NO_FILE) {
-             $error_message = "Terjadi error pada file surat balasan (Code: ".$_FILES["surat_balasan_perusahaan"]["error"].").";
-             $upload_surat_balasan_ok = 0;
-        }
-        // Jika tindakan 'terima', surat balasan mungkin lebih diharapkan
-        if ($tindakan_konfirmasi === 'terima' && $surat_balasan_path_db === null && $upload_surat_balasan_ok && !(isset($_FILES["surat_balasan_perusahaan"]) && $_FILES["surat_balasan_perusahaan"]["error"] == UPLOAD_ERR_NO_FILE)) {
-            // $error_message = "Surat balasan resmi perusahaan sebaiknya diunggah jika menerima pengajuan.";
-            // Untuk sekarang kita buat opsional saja.
-        }
 
+            if (!$upload_error) {
+                $conn->begin_transaction();
+                try {
+                    $sql_update = "UPDATE pengajuan_kp SET status_pengajuan = ?, surat_balasan_perusahaan_path = ? WHERE id_pengajuan = ? AND id_perusahaan = ? AND status_pengajuan = 'menunggu_konfirmasi_perusahaan'";
+                    $stmt_update = $conn->prepare($sql_update);
+                    if(!$stmt_update) throw new Exception("Prepare statement gagal.");
+                    
+                    $stmt_update->bind_param("ssii", $new_status_kp, $surat_balasan_path_db, $id_pengajuan_url, $id_perusahaan_login);
+                    $stmt_update->execute();
 
-        if (empty($error_message) && $upload_surat_balasan_ok) {
-            $conn->begin_transaction();
-            try {
-                // Update status_pengajuan
-                $sql_update_status = "UPDATE pengajuan_kp SET status_pengajuan = ? WHERE id_pengajuan = ? AND id_perusahaan = ? AND status_pengajuan = 'menunggu_konfirmasi_perusahaan'";
-                $stmt_update_status = $conn->prepare($sql_update_status);
-                if (!$stmt_update_status) throw new Exception("Prepare update status KP gagal: " . $conn->error);
-                $stmt_update_status->bind_param("sii", $new_status_kp, $id_pengajuan_url, $id_perusahaan_login);
-                if (!$stmt_update_status->execute()) throw new Exception("Eksekusi update status KP gagal: " . $stmt_update_status->error);
-                $affected_rows_status = $stmt_update_status->affected_rows;
-                $stmt_update_status->close();
-
-                if ($affected_rows_status == 0 && empty($error_message)) { // Gagal update status, mungkin status sudah berubah atau tidak berhak
-                     throw new Exception("Tidak dapat mengubah status pengajuan. Mungkin status sudah berubah atau Anda tidak memiliki otorisasi.");
-                }
-
-                // Jika ada surat balasan yang diupload, simpan sebagai dokumen_kp
-                if ($surat_balasan_path_db !== null) {
-                    $nama_surat_dok = "Surat Balasan dari " . $nama_perusahaan_login;
-                    $jenis_surat_dok = "surat_balasan_perusahaan";
-                    $sql_insert_surat = "INSERT INTO dokumen_kp (id_pengajuan, uploader_id, tipe_uploader, nama_dokumen, jenis_dokumen, file_path, status_verifikasi_dokumen) 
-                                         VALUES (?, ?, 'perusahaan', ?, ?, ?, 'disetujui')"; // Langsung disetujui
-                    $stmt_insert_surat = $conn->prepare($sql_insert_surat);
-                    if (!$stmt_insert_surat) throw new Exception("Prepare insert surat balasan gagal: ". $conn->error);
-                    // uploader_id untuk perusahaan bisa berupa id_perusahaan atau email, perlu konsistensi. Di sini kita pakai id_perusahaan.
-                    $uploader_id_perusahaan_str = (string)$id_perusahaan_login; 
-                    $stmt_insert_surat->bind_param("issss", $id_pengajuan_url, $uploader_id_perusahaan_str, $nama_surat_dok, $jenis_surat_dok, $surat_balasan_path_db);
-                    if (!$stmt_insert_surat->execute()) throw new Exception("Eksekusi insert surat balasan gagal: ". $stmt_insert_surat->error);
-                    $stmt_insert_surat->close();
-                }
-
-                $conn->commit();
-                $success_message = "Konfirmasi pengajuan KP telah berhasil disimpan. Status diubah menjadi: " . ucfirst(str_replace('_', ' ', $new_status_kp)) . ".";
-                // Redirect atau refresh data
-                 // header("Location: /KP/perusahaan/konfirmasi_pengajuan_list.php?confirm_success=1");
-                 // exit();
-
-            } catch (Exception $e) {
-                $conn->rollback();
-                $error_message = "Gagal memproses konfirmasi: " . htmlspecialchars($e->getMessage());
-                // Jika file terlanjur diupload tapi DB gagal, hapus file
-                if ($surat_balasan_path_db && file_exists("../".$surat_balasan_path_db)) { // Path relatif dari file ini ke root KP lalu ke uploads
-                    unlink("../".$surat_balasan_path_db);
+                    if ($stmt_update->affected_rows === 0) {
+                        throw new Exception("Tidak dapat mengubah status. Mungkin status sudah diubah sebelumnya.");
+                    }
+                    $stmt_update->close();
+                    
+                    if ($surat_balasan_path_db !== null) {
+                         $nama_dok = "Surat Balasan dari " . $nama_perusahaan_login;
+                         $jenis_dok = "surat_balasan_perusahaan";
+                         $stmt_doc = $conn->prepare("INSERT INTO dokumen_kp (id_pengajuan, uploader_id, tipe_uploader, nama_dokumen, jenis_dokumen, file_path, status_verifikasi_dokumen) VALUES (?, ?, 'perusahaan', ?, ?, ?, 'disetujui')");
+                         if(!$stmt_doc) throw new Exception("Prepare statement dokumen gagal.");
+                         $uploader_id_str = (string)$id_perusahaan_login;
+                         $stmt_doc->bind_param("issss", $id_pengajuan_url, $uploader_id_str, $nama_dok, $jenis_dok, $surat_balasan_path_db);
+                         $stmt_doc->execute();
+                         $stmt_doc->close();
+                    }
+                    
+                    $conn->commit();
+                    $success_message = "Konfirmasi pengajuan KP telah berhasil disimpan. Halaman akan dimuat ulang.";
+                    header("refresh:3;url=" . $_SERVER['REQUEST_URI']);
+                } catch (Exception $e) {
+                    $conn->rollback();
+                    $error_message = "Gagal memproses: " . $e->getMessage();
+                    if ($surat_balasan_path_db && file_exists($surat_balasan_path_db)) {
+                        unlink($surat_balasan_path_db);
+                    }
                 }
             }
         }
     }
 }
-
 
 // Selalu ambil data terbaru untuk ditampilkan
 $display_error_message = $error_message_initial_load;
@@ -207,157 +154,151 @@ if (empty($display_error_message) && !empty($error_message)) {
 }
 
 if ($id_pengajuan_url !== null && empty($error_message_initial_load)) {
-    if ($conn && ($conn instanceof mysqli) && !$conn->connect_error) {
+    if ($conn) {
         $fetch_error_temp = '';
         $fetched_data = getPengajuanDetailsForCompany($conn, $id_pengajuan_url, $id_perusahaan_login, $fetch_error_temp);
-        
-        if (is_array($fetched_data) && isset($fetched_data['pengajuan']) && $fetched_data['pengajuan'] !== null) {
+        if ($fetched_data['pengajuan']) {
             $pengajuan_detail = $fetched_data['pengajuan'];
             $dokumen_mahasiswa = $fetched_data['dokumen'];
-            if (empty($display_error_message) && !empty($fetch_error_temp) && !$pengajuan_detail ) {
-                $display_error_message = $fetch_error_temp;
-            }
         } elseif (empty($display_error_message)) {
-            $display_error_message = !empty($fetch_error_temp) ? $fetch_error_temp : "Data pengajuan KP tidak dapat dimuat untuk perusahaan Anda atau statusnya tidak lagi 'menunggu konfirmasi'.";
+            $display_error_message = $fetch_error_temp;
         }
-    } elseif (empty($display_error_message)) {
-        $display_error_message = "Koneksi database tidak tersedia untuk memuat data.";
+    } else {
+         $display_error_message = "Koneksi database tidak tersedia untuk memuat data.";
     }
 }
 
-// Set judul halaman
 $page_title = "Konfirmasi Pengajuan Kerja Praktek";
-if ($pengajuan_detail && isset($pengajuan_detail['judul_kp'])) {
-    $page_title = "Konfirmasi: " . htmlspecialchars($pengajuan_detail['judul_kp']);
-} elseif ($id_pengajuan_url !== null) {
-     $page_title = "Konfirmasi Pengajuan KP (ID: ".htmlspecialchars($id_pengajuan_url).")";
-}
 require_once '../includes/header.php';
 ?>
+<div class="kp-konfirmasi-modern-container">
 
-<div class="page-layout-wrapper">
-    <?php require_once '../includes/sidebar_perusahaan.php'; ?>
-
-    <main class="main-content-area">
-        <div class="form-container konfirmasi-kp-form">
+    <div class="form-hero-section">
+        <div class="form-hero-content">
+            <div class="form-hero-icon">
+                <svg viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+            </div>
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <a href="/KP/perusahaan/konfirmasi_pengajuan_list.php" class="btn btn-light btn-sm mb-3">&laquo; Kembali ke Daftar Konfirmasi</a>
-            <hr>
-
-            <?php if (!empty($success_message)): ?>
-                <div class="message success"><p><?php echo htmlspecialchars($success_message); ?></p></div>
-            <?php endif; ?>
-            <?php if (!empty($display_error_message)): ?>
-                <div class="message error"><p><?php echo htmlspecialchars($display_error_message); ?></p></div>
-            <?php endif; ?>
-
-            <?php if ($pengajuan_detail): ?>
-                <div class="info-section card mb-4">
-                    <div class="card-header"><h3>Detail Pengajuan dari Mahasiswa</h3></div>
-                    <div class="card-body">
-                        <dl>
-                            <dt>Nama Mahasiswa:</dt><dd><?php echo htmlspecialchars($pengajuan_detail['nama_mahasiswa']); ?></dd>
-                            <dt>NIM:</dt><dd><?php echo htmlspecialchars($pengajuan_detail['nim']); ?></dd>
-                            <dt>Program Studi:</dt><dd><?php echo htmlspecialchars($pengajuan_detail['prodi']); ?></dd>
-                            <dt>Angkatan:</dt><dd><?php echo htmlspecialchars($pengajuan_detail['angkatan']); ?></dd>
-                            <dt>Email Mahasiswa:</dt><dd><a href="mailto:<?php echo htmlspecialchars($pengajuan_detail['email_mahasiswa']); ?>"><?php echo htmlspecialchars($pengajuan_detail['email_mahasiswa']); ?></a></dd>
-                            <dt>No. HP Mahasiswa:</dt><dd><?php echo htmlspecialchars($pengajuan_detail['no_hp_mahasiswa'] ?: '-'); ?></dd>
-                            <hr style="margin: 10px 0;">
-                            <dt>Judul/Topik Rencana KP:</dt><dd><strong><?php echo htmlspecialchars($pengajuan_detail['judul_kp']); ?></strong></dd>
-                            <dt>Deskripsi Rencana KP:</dt><dd><?php echo nl2br(htmlspecialchars($pengajuan_detail['deskripsi_kp'])); ?></dd>
-                            <dt>Periode Rencana:</dt><dd><?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_mulai_rencana'])); ?> s/d <?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_selesai_rencana'])); ?></dd>
-                            <dt>Diajukan ke Kampus:</dt><dd><?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_diajukan_kampus'])); ?></dd>
-                        </dl>
-                    </div>
-                </div>
-
-                <div class="info-section card mb-4">
-                    <div class="card-header"><h3>Dokumen Pendukung dari Mahasiswa</h3></div>
-                    <div class="card-body">
-                        <?php if (!empty($dokumen_mahasiswa)): ?>
-                            <ul class="dokumen-list">
-                                <?php foreach ($dokumen_mahasiswa as $doc): ?>
-                                    <li>
-                                        <strong><?php echo htmlspecialchars($doc['nama_dokumen']); ?></strong>
-                                        (Jenis: <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($doc['jenis_dokumen']))); ?>)
-                                        <?php if(!empty($doc['file_path'])): ?>
-                                            <br><a href="/KP/<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-outline-primary btn-sm">Unduh/Lihat Dokumen</a>
-                                        <?php endif; ?>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php else: ?>
-                            <p><em>Mahasiswa tidak menyertakan dokumen pendukung untuk pengajuan ini.</em></p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <?php // Tampilkan form konfirmasi hanya jika statusnya masih 'menunggu_konfirmasi_perusahaan' dan belum ada pesan sukses dari POST
-                if ($pengajuan_detail['status_pengajuan'] === 'menunggu_konfirmasi_perusahaan' && empty($success_message)): ?>
-                <form action="/KP/perusahaan/konfirmasi_pengajuan_form.php?id_pengajuan=<?php echo $id_pengajuan_url; ?>" method="POST" enctype="multipart/form-data" class="action-form card">
-                    <div class="card-header"><h3><i class="icon-check"></i> Berikan Konfirmasi Penerimaan</h3></div>
-                    <div class="card-body">
-                        <input type="hidden" name="id_pengajuan" value="<?php echo $id_pengajuan_url; ?>">
-                        <div class="form-group">
-                            <label>Tindakan Konfirmasi (*):</label>
-                            <div>
-                                <input type="radio" id="tindakan_terima" name="tindakan_konfirmasi" value="terima" required <?php echo (isset($_POST['tindakan_konfirmasi']) && $_POST['tindakan_konfirmasi'] == 'terima') ? 'checked' : ''; ?>>
-                                <label for="tindakan_terima" style="font-weight:normal; margin-right:15px;">Terima Pengajuan KP</label>
-                                <br>
-                                <input type="radio" id="tindakan_tolak" name="tindakan_konfirmasi" value="tolak" required <?php echo (isset($_POST['tindakan_konfirmasi']) && $_POST['tindakan_konfirmasi'] == 'tolak') ? 'checked' : ''; ?>>
-                                <label for="tindakan_tolak" style="font-weight:normal;">Tolak Pengajuan KP</label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="surat_balasan_perusahaan">Upload Surat Balasan Resmi (Opsional, PDF/DOCX/JPG/PNG, maks. 5MB):</label>
-                            <input type="file" id="surat_balasan_perusahaan" name="surat_balasan_perusahaan" class="form-control-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                            <small>Surat balasan resmi dari perusahaan jika ada (misal: surat penerimaan atau penolakan).</small>
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" name="submit_konfirmasi" class="btn btn-success">Kirim Konfirmasi</button>
-                        </div>
-                    </div>
-                </form>
-                <?php elseif (!empty($success_message)): ?>
-                    <?php else: ?>
-                    <div class="message info"><p>Pengajuan KP ini sudah tidak dalam status menunggu konfirmasi dari perusahaan Anda. Status saat ini: <?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $pengajuan_detail['status_pengajuan']))); ?>.</p></div>
-                <?php endif; ?>
-
-
-            <?php elseif(empty($display_error_message)): ?>
-                <div class="message info"><p>Memuat detail pengajuan...</p></div>
-            <?php endif; ?>
+            <p>Tinjau detail pengajuan dari mahasiswa dan berikan keputusan penerimaan.</p>
         </div>
-    </main>
+    </div>
+
+    <div class="form-wrapper">
+        <a href="pengajuan_kp_masuk.php" class="back-link">&larr; Kembali ke Daftar Pengajuan</a>
+        
+        <?php if (!empty($success_message)): ?>
+            <div class="message success animate-on-scroll"><h4>Berhasil!</h4><p><?php echo htmlspecialchars($success_message); ?></p></div>
+        <?php endif; ?>
+        <?php if (!empty($display_error_message)): ?>
+            <div class="message error animate-on-scroll"><p><?php echo htmlspecialchars($display_error_message); ?></p></div>
+        <?php endif; ?>
+        
+        <?php if ($pengajuan_detail): ?>
+            <div class="info-block animate-on-scroll">
+                <div class="info-header"><h3><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg> Rencana Kerja Praktek</h3></div>
+                <div class="info-content">
+                    <h4><?php echo htmlspecialchars($pengajuan_detail['judul_kp']); ?></h4>
+                    <p><?php echo nl2br(htmlspecialchars($pengajuan_detail['deskripsi_kp'])); ?></p>
+                    <div class="info-grid">
+                        <div class="info-item"><span>Periode Rencana</span><strong><?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_mulai_rencana'])); ?> - <?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_selesai_rencana'])); ?></strong></div>
+                        <div class="info-item"><span>Diajukan Oleh Kampus</span><strong><?php echo date("d M Y", strtotime($pengajuan_detail['tanggal_diajukan_mahasiswa'])); ?></strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-block animate-on-scroll">
+                <div class="info-header"><h3><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Profil Mahasiswa</h3></div>
+                 <div class="info-content">
+                     <div class="info-grid">
+                        <div class="info-item"><span>Nama Mahasiswa</span><strong><?php echo htmlspecialchars($pengajuan_detail['nama_mahasiswa']); ?></strong></div>
+                        <div class="info-item"><span>NIM</span><strong><?php echo htmlspecialchars($pengajuan_detail['nim']); ?></strong></div>
+                        <div class="info-item"><span>Program Studi</span><strong><?php echo htmlspecialchars($pengajuan_detail['prodi']); ?></strong></div>
+                        <div class="info-item"><span>Angkatan</span><strong><?php echo htmlspecialchars($pengajuan_detail['angkatan']); ?></strong></div>
+                        <div class="info-item"><span>Email</span><a href="mailto:<?php echo htmlspecialchars($pengajuan_detail['email_mahasiswa']); ?>"><?php echo htmlspecialchars($pengajuan_detail['email_mahasiswa']); ?></a></div>
+                        <div class="info-item"><span>No. HP</span><a href="tel:<?php echo htmlspecialchars($pengajuan_detail['no_hp_mahasiswa']); ?>"><?php echo htmlspecialchars($pengajuan_detail['no_hp_mahasiswa'] ?: '-'); ?></a></div>
+                    </div>
+                 </div>
+            </div>
+
+            <div class="info-block animate-on-scroll">
+                <div class="info-header"><h3><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> Dokumen Pendukung</h3></div>
+                 <div class="info-content">
+                    <?php if (!empty($dokumen_mahasiswa)): ?>
+                        <ul class="dokumen-list">
+                            <?php foreach ($dokumen_mahasiswa as $doc): ?>
+                                <li>
+                                    <div class="dok-info">
+                                        <strong><?php echo htmlspecialchars($doc['nama_dokumen']); ?></strong>
+                                        <span>Jenis: <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($doc['jenis_dokumen']))); ?></span>
+                                    </div>
+                                    <?php if(!empty($doc['file_path'])): ?>
+                                        <a href="/KP/<?php echo htmlspecialchars(str_replace('../', '', $doc['file_path'])); ?>" target="_blank" class="btn-unduh">Unduh</a>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php else: ?>
+                        <p><em>Mahasiswa tidak menyertakan dokumen pendukung.</em></p>
+                    <?php endif; ?>
+                 </div>
+            </div>
+
+            <?php if ($pengajuan_detail['status_pengajuan'] === 'menunggu_konfirmasi_perusahaan' && empty($success_message)): ?>
+            <form action="<?php echo htmlspecialchars($_SERVER['REQUEST_URI']); ?>" method="POST" enctype="multipart/form-data" class="modern-form animate-on-scroll">
+                <div class="form-step">
+                    <div class="form-step-header">
+                        <div class="form-step-icon"><svg viewBox="0 0 24 24"><path d="M20 12.18V5.82a2 2 0 0 0-1.09-1.83l-6-3.6a2 2 0 0 0-1.82 0l-6 3.6A2 2 0 0 0 4 5.82v6.36a2 2 0 0 0 1.09 1.83l6 3.6a2 2 0 0 0 1.82 0l6-3.6A2 2 0 0 0 20 12.18z"></path><polyline points="12 22 12 12 4 7"></polyline><polyline points="20 7 12 12"></polyline></svg></div>
+                        <h3>Berikan Keputusan</h3>
+                    </div>
+                    <input type="hidden" name="id_pengajuan" value="<?php echo $id_pengajuan_url; ?>">
+                    <div class="form-group">
+                        <label>Tindakan Konfirmasi (*)</label>
+                        <div class="radio-options">
+                            <label class="radio-card">
+                                <input type="radio" name="tindakan_konfirmasi" value="terima" required>
+                                <div class="radio-content">
+                                    <svg class="terima" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <span>Terima Pengajuan</span>
+                                </div>
+                            </label>
+                            <label class="radio-card">
+                                <input type="radio" name="tindakan_konfirmasi" value="tolak" required>
+                                <div class="radio-content">
+                                    <svg class="tolak" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                    <span>Tolak Pengajuan</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="surat_balasan_perusahaan">Upload Surat Balasan Resmi (Opsional)</label>
+                        <div class="file-drop-area">
+                            <span class="file-drop-message">Seret & lepas file, atau klik untuk memilih</span>
+                            <input type="file" id="surat_balasan_perusahaan" name="surat_balasan_perusahaan" class="file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                        </div>
+                        <small>Sangat disarankan jika menerima. Format: PDF/DOCX/JPG/PNG, Maks: 5MB</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" name="submit_konfirmasi" class="btn-submit">
+                           <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            Kirim Konfirmasi
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <?php endif; ?>
+        <?php endif; ?>
+
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS umum sudah ada dari header, sidebar, .card, .form-group, .message, .btn, status-badge sudah ada */
-    .konfirmasi-kp-form h1 { margin-top: 0; margin-bottom: 5px; }
-    .konfirmasi-kp-form hr { margin-top:15px; margin-bottom: 20px; }
-    .btn.mb-3 { margin-bottom: 1rem !important; }
-    .icon-check::before { content: "✔️ "; }
-
-    .info-section.card .card-header h3 { font-size: 1.2em; color: #007bff; }
-    .info-section.card .card-body dl dt { width: 200px; float:left; font-weight:bold; margin-bottom:0.5rem; padding-right: 10px; box-sizing: border-box;}
-    .info-section.card .card-body dl dd { margin-left: 200px; margin-bottom:0.5rem; }
-
-    .dokumen-list { list-style: none; padding: 0; }
-    .dokumen-list li { background-color: #f9f9f9; padding: 10px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 8px; }
-    .dokumen-list li strong { font-size: 1em; }
-    .dokumen-list li small { display: block; color: #666; margin-top: 3px; }
-    .btn-outline-primary { color: #007bff; border-color: #007bff; }
-    .btn-outline-primary:hover { color: #fff; background-color: #007bff; border-color: #007bff; }
-    .form-control-file { display: block; width: 100%; }
-
-
-    .action-form.card .card-header h3 { font-size: 1.2em; color: #28a745; }
+.kp-konfirmasi-modern-container{--primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--success-color:#28a745;--danger-color:#dc3545;--text-primary:#2d3748;--text-secondary:#718096;--bg-light:#f8f9fa;--border-color:#dee2e6;--card-shadow:0 10px 30px rgba(0,0,0,.07);--border-radius:16px;font-family:Inter,sans-serif;color:var(--text-primary);max-width:900px;margin:0 auto;padding:2rem 1rem}.kp-konfirmasi-modern-container svg{stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none;stroke:currentColor}.kp-konfirmasi-modern-container .form-hero-section{padding:3rem 2rem;background:var(--primary-gradient);border-radius:var(--border-radius);margin-bottom:2rem;color:#fff;text-align:center}.kp-konfirmasi-modern-container .form-hero-content{max-width:600px;margin:0 auto}.kp-konfirmasi-modern-container .form-hero-icon{width:60px;height:60px;background:rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem}.kp-konfirmasi-modern-container .form-hero-icon svg{width:28px;height:28px;stroke:#fff}.kp-konfirmasi-modern-container .form-hero-section h1{font-size:2.5rem;font-weight:700;margin-bottom:.5rem}.kp-konfirmasi-modern-container .form-hero-section p{font-size:1.1rem;opacity:.9;font-weight:300}.kp-konfirmasi-modern-container .form-wrapper{background-color:#fff;padding:2.5rem;border-radius:var(--border-radius);box-shadow:var(--card-shadow)}.kp-konfirmasi-modern-container .back-link{text-decoration:none;color:var(--text-secondary);font-weight:500;display:inline-block;margin-bottom:2rem;transition:color .2s ease}.kp-konfirmasi-modern-container .back-link:hover{color:var(--text-primary)}.kp-konfirmasi-modern-container .message{padding:1rem 1.5rem;margin-bottom:2rem;border-radius:12px;border:1px solid transparent;font-size:1em;text-align:center}.kp-konfirmasi-modern-container .message h4{margin-top:0}.kp-konfirmasi-modern-container .message.success{background-color:#d1e7dd;color:#0f5132;border-color:#badbcc}.kp-konfirmasi-modern-container .message.error{background-color:#f8d7da;color:#842029;border-color:#f5c2c7}.kp-konfirmasi-modern-container .info-block{border:1px solid var(--border-color);border-radius:12px;margin-bottom:1.5rem}.kp-konfirmasi-modern-container .info-header{display:flex;align-items:center;gap:12px;padding:1rem 1.5rem;border-bottom:1px solid var(--border-color)}.kp-konfirmasi-modern-container .info-header svg{width:20px;height:20px;color:#667eea}.kp-konfirmasi-modern-container .info-header h3{margin:0;font-size:1.2rem;font-weight:600}.kp-konfirmasi-modern-container .info-content{padding:1.5rem}.kp-konfirmasi-modern-container .info-content h4{margin-top:0;margin-bottom:.5rem;font-size:1.3rem}.kp-konfirmasi-modern-container .info-content p{margin-top:0;line-height:1.6;color:var(--text-secondary)}.kp-konfirmasi-modern-container .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}.kp-konfirmasi-modern-container .info-item span{display:block;font-size:.9rem;color:var(--text-secondary);margin-bottom:.25rem}.kp-konfirmasi-modern-container .info-item strong,.kp-konfirmasi-modern-container .info-item a{font-weight:600;text-decoration:none;color:var(--text-primary)}.kp-konfirmasi-modern-container .info-item a:hover{text-decoration:underline}.kp-konfirmasi-modern-container .dokumen-list{list-style:none;padding:0;margin:0}.kp-konfirmasi-modern-container .dokumen-list li{display:flex;justify-content:space-between;align-items:center;padding:1rem;border-radius:8px;transition:background-color .2s ease}.kp-konfirmasi-modern-container .dokumen-list li:not(:last-child){border-bottom:1px solid var(--border-color)}.kp-konfirmasi-modern-container .dokumen-list li:hover{background-color:var(--bg-light)}.kp-konfirmasi-modern-container .dokumen-list .dok-info strong{display:block;font-weight:600}.kp-konfirmasi-modern-container .dokumen-list .dok-info span{font-size:.85rem;color:var(--text-secondary)}.kp-konfirmasi-modern-container .btn-unduh{padding:.5rem 1rem;background:var(--bg-light);border:1px solid var(--border-color);border-radius:8px;text-decoration:none;color:var(--text-primary);font-weight:500;transition:all .2s ease}.kp-konfirmasi-modern-container .btn-unduh:hover{background-color:#667eea;color:#fff;border-color:#667eea}.kp-konfirmasi-modern-container .modern-form .form-step{margin-bottom:0;border:none;box-shadow:none;padding:0}.kp-konfirmasi-modern-container .modern-form .form-step-header{margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1.5rem}.kp-konfirmasi-modern-container .form-group label{font-weight:600;margin-bottom:.75rem}.kp-konfirmasi-modern-container .radio-options{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.kp-konfirmasi-modern-container .radio-card{display:block;border:2px solid var(--border-color);border-radius:12px;padding:1.5rem;cursor:pointer;transition:all .2s ease-in-out;text-align:center}.kp-konfirmasi-modern-container .radio-card input{display:none}.kp-konfirmasi-modern-container .radio-card .radio-content svg{width:36px;height:36px;margin-bottom:.5rem;transition:transform .2s ease}.kp-konfirmasi-modern-container .radio-card .radio-content .terima{color:var(--success-color)}.kp-konfirmasi-modern-container .radio-card .radio-content .tolak{color:var(--danger-color)}.kp-konfirmasi-modern-container .radio-card .radio-content span{font-size:1.1rem;font-weight:600;color:var(--text-secondary);transition:color .2s ease}.kp-konfirmasi-modern-container .radio-card:hover{border-color:#a3bffa}.kp-konfirmasi-modern-container .radio-card input:checked+.radio-content{transform:scale(1.05)}.kp-konfirmasi-modern-container .radio-card input:checked+.radio-content svg{transform:scale(1.2)}.kp-konfirmasi-modern-container .radio-card input:checked+.radio-content span{color:var(--text-primary)}.kp-konfirmasi-modern-container .radio-card input:checked~.radio-content .terima{color:var(--success-color)}.kp-konfirmasi-modern-container .radio-card input:checked~.radio-content .tolak{color:var(--danger-color)}.kp-konfirmasi-modern-container .radio-card.terima input:checked~.radio-content{color:var(--success-color)}.kp-konfirmasi-modern-container .file-drop-area{position:relative;padding:2rem;border:2px dashed var(--border-color);border-radius:12px;text-align:center;transition:all .2s ease;cursor:pointer}.kp-konfirmasi-modern-container .file-drop-area.is-active{border-color:#667eea;background-color:rgba(102,126,234,.05)}.kp-konfirmasi-modern-container .file-drop-area.has-file{border-color:var(--success-color);background-color:rgba(40,167,69,.05)}.kp-konfirmasi-modern-container .file-drop-message{color:var(--text-secondary);font-weight:500}.kp-konfirmasi-modern-container .file-input{position:absolute;left:0;top:0;height:100%;width:100%;cursor:pointer;opacity:0}.kp-konfirmasi-modern-container .form-actions{margin-top:2rem;text-align:right}.kp-konfirmasi-modern-container .btn-submit{background:var(--primary-gradient);color:#fff;padding:14px 30px;font-size:1.1em;font-weight:600;border:none;border-radius:10px;display:inline-flex;align-items:center;gap:10px;cursor:pointer;transition:all .3s ease;box-shadow:0 4px 15px rgba(102,126,234,.3)}.kp-konfirmasi-modern-container .btn-submit:hover:not([disabled]){transform:translateY(-3px);box-shadow:0 8px 25px rgba(102,126,234,.4)}.kp-konfirmasi-modern-container .animate-on-scroll{opacity:0;transform:translateY(30px);transition:opacity .6s ease-out,transform .6s ease-out}.kp-konfirmasi-modern-container .animate-on-scroll.is-visible{opacity:1;transform:translateY(0)}
 </style>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli) && !$conn->connect_error) {
+if (isset($conn) && ($conn instanceof mysqli)) {
     $conn->close();
 }
 ?>

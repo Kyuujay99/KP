@@ -273,7 +273,6 @@ require_once '../includes/header.php';
 ?>
 
 <div class="page-layout-wrapper">
-    <?php require_once '../includes/sidebar_admin_prodi.php'; ?>
 
     <main class="main-content-area">
         <div class="form-container finalisasi-nilai-form">

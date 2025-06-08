@@ -70,9 +70,6 @@ require_once '../includes/header.php';
 ?>
 
 <div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_mahasiswa.php'; ?>
-
     <main class="main-content-area">
         <div class="list-container nilai-view-container-mahasiswa">
             <h1><?php echo htmlspecialchars($page_title); ?></h1>

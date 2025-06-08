@@ -1,17 +1,20 @@
 <?php
-// /KP/register.php
-session_start();
-include 'config/db_connect.php'; // Pastikan path ini benar
+// /KP/register.php (Versi Final, Identik dengan Login)
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+require_once 'config/db_connect.php'; 
 $registration_message = '';
 $registration_success = false;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = $_POST['role'];
     $email = $_POST['email'];
-    $password = $_POST['password']; // Password akan disimpan apa adanya
+    $password = $_POST['password'];
     $confirm_password = $_POST['confirm_password'];
 
-    if ($password !== $confirm_password) {
+if ($password !== $confirm_password) {
         $registration_message = "Password dan konfirmasi password tidak cocok.";
     } else {
         // Proses registrasi berdasarkan peran
@@ -103,31 +106,128 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrasi - Sistem Informasi Kerja Praktek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
-        .register-container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1); width: 400px; }
-        .register-container h2 { text-align: center; color: #333; margin-bottom: 20px; }
-        .register-container label { display: block; margin-bottom: 8px; color: #555; font-weight: bold; }
+        :root {
+            --primary-color: #6a11cb; --secondary-color: #2575fc;
+            --dark-color: #1a1a2e; --light-color: #f4f7f9;
+            --text-color: #5a5a5a; --border-radius: 20px;
+        }
+        /* Latar Belakang & Partikel Animasi */
+        body {
+            font-family: 'Poppins', sans-serif; margin: 0;
+            min-height: 100vh; overflow-x: hidden;
+            display: flex; justify-content: center; align-items: center;
+            padding: 2rem 1rem;
+            background: linear-gradient(-45deg, #6a11cb, #2575fc, #ec008c, #fc6767);
+            background-size: 400% 400%;
+            animation: gradientBG 18s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+        }
+
+        /* Container utama (sebelumnya .glass-card) */
+        .register-container {
+            width: 100%; max-width: 500px;
+            padding: 2.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            animation: fadeInCard 1s ease-out;
+            color: #fff;
+            transition: transform 0.1s ease-out;
+        }
+        @keyframes fadeInCard { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Header formulir */
+        .register-container h2 {
+            text-align: center; font-size: 2rem; font-weight: 700;
+            color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            margin: 0 0 2rem 0;
+        }
+
+        /* Styling untuk semua elemen form */
+        .register-container label {
+            display: block; margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.8); font-weight: 500; font-size: 0.9em;
+        }
         .register-container input[type="text"],
         .register-container input[type="email"],
         .register-container input[type="password"],
         .register-container input[type="number"],
         .register-container textarea,
-        .register-container select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .register-container button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .register-container button:hover { background-color: #218838; }
-        .message { padding: 10px; margin-bottom: 15px; border-radius: 4px; text-align: center; font-size: 0.9em; }
-        .message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
-        .message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
-        .login-link { display: block; text-align: center; margin-top: 20px; color: #007bff; text-decoration: none; font-size: 0.9em; }
-        .login-link:hover { text-decoration: underline; }
-        .form-section { border-top: 1px dashed #eee; padding-top: 15px; margin-top:15px; display: none; }
+        .register-container select {
+            width: 100%; padding: 12px 15px; margin-bottom: 1rem;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px; font-size: 1rem; color: #fff;
+            transition: all 0.3s ease;
+        }
+        .register-container select option { color: #000; background-color: #fff; }
+        .register-container input::placeholder, .register-container textarea::placeholder { color: rgba(255,255,255,0.5); }
+        .register-container input:focus,
+        .register-container select:focus,
+        .register-container textarea:focus {
+            outline: none; background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.8);
+        }
+
+        /* Tombol Submit */
+        .register-container button[type="submit"] {
+            width: 100%; padding: 15px; margin-top: 1rem;
+            background-size: 200% auto;
+            background-image: linear-gradient(to right, #2575fc 0%, #6a11cb 51%, #2575fc 100%);
+            color: white; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 1.1rem; font-weight: 600; transition: all 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .register-container button[type="submit"]:hover {
+            background-position: right center;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Pesan notifikasi */
+        .message { padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; text-align: center; }
+        .message.success { background-color: rgba(40, 167, 69, 0.8); color: #fff; }
+        .message.error { background-color: rgba(220, 53, 69, 0.8); color: #fff; }
+        
+        /* Link ke halaman login */
+        .login-link { display: block; text-align: center; margin-top: 1.5rem; color: rgba(255,255,255,0.8); text-decoration: none; }
+        .login-link:hover { text-decoration: underline; color: #fff; }
+
+        /* Form section yang dinamis */
+        .form-section {
+            display: none;
+            animation: fadeInSection 0.5s;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
         .form-section.active { display: block; }
-        .form-section h3 { font-size: 1.1em; color: #333; margin-bottom:10px; }
+        .form-section h3 {
+            font-size: 1.1em; color: #fff;
+            margin: 0 0 1rem 0; text-align: center; opacity: 0.9;
+        }
+        @keyframes fadeInSection { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Auth fields section - untuk email, password, confirm password */
+        #auth_fields {
+            display: none;
+            animation: fadeInSection 0.5s;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed rgba(255,255,255,0.2);
+        }
+        #auth_fields.active { display: block; }
+
     </style>
 </head>
 <body>
-    <div class="register-container">
+    <div class="register-container" id="register-card">
         <h2>Registrasi Akun Baru</h2>
 
         <?php if (!empty($registration_message)): ?>
@@ -148,15 +248,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </select>
             </div>
 
-            <div style="border-top: 1px dashed #eee; padding-top: 15px; margin-top:15px;">
+            <div id="auth_fields" class="form-section">
                 <label for="email">Email:</label>
                 <input type="email" id="email" name="email" required>
-            </div>
-            <div>
                 <label for="password">Password:</label>
                 <input type="password" id="password" name="password" required>
-            </div>
-            <div>
                 <label for="confirm_password">Konfirmasi Password:</label>
                 <input type="password" id="confirm_password" name="confirm_password" required>
             </div>
@@ -174,7 +270,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <option value="Sistem Informasi">Sistem Informasi</option>
                     <option value="Teknik Elektro">Teknik Elektro</option>
                     <option value="Teknik Mesin">Teknik Mesin</option>
-                    </select>
+                </select>
                 <label for="angkatan">Angkatan (Tahun):</label>
                 <input type="number" id="angkatan" name="angkatan" min="2000" max="<?php echo date('Y'); ?>">
                 <label for="no_hp_mahasiswa">No. HP (Mahasiswa):</label>
@@ -205,54 +301,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <a href="/KP/index.php" class="login-link">Sudah punya akun? Login di sini</a>
     </div>
-
     <script>
+        // Skrip untuk 3D tilt mengikuti kursor
+        const card = document.getElementById('register-card');
+        if (card) {
+            document.body.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - (rect.left + rect.width / 2);
+                const y = e.clientY - (rect.top + rect.height / 2);
+                const rotateX = -y / 40;
+                const rotateY = x / 40;
+                card.style.transform = `perspective(1500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            });
+            document.body.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1500px) rotateX(0) rotateY(0)';
+            });
+        }
+
+        // Skrip untuk form dinamis
         function toggleRoleFields() {
             const role = document.getElementById('role').value;
             const allSections = document.querySelectorAll('.form-section');
-            const emailField = document.getElementById('email');
-            const passwordField = document.getElementById('password');
-            const confirmPasswordField = document.getElementById('confirm_password');
-
-            // Sembunyikan semua section spesifik peran
-            allSections.forEach(section => section.classList.remove('active'));
-            // Set semua input di section spesifik peran menjadi tidak required
+            const authFields = document.getElementById('auth_fields');
+            
+            // Reset semua required fields
             document.querySelectorAll('.form-section input, .form-section select, .form-section textarea').forEach(input => input.required = false);
+            
+            // Sembunyikan semua sections
+            allSections.forEach(section => section.classList.remove('active'));
 
-            // Bagian umum selalu required jika peran dipilih
             if (role) {
-                emailField.required = true;
-                passwordField.required = true;
-                confirmPasswordField.required = true;
+                // Tampilkan auth fields (email, password, confirm password)
+                authFields.classList.add('active');
+                authFields.querySelectorAll('input').forEach(input => input.required = true);
+                
+                // Tampilkan section yang sesuai dengan role
+                const sectionToShow = document.getElementById(role + '_fields');
+                if (sectionToShow) {
+                    sectionToShow.classList.add('active');
+                    sectionToShow.querySelectorAll('input, select, textarea').forEach(input => {
+                        // Hanya set required jika labelnya mengandung (*)
+                        const label = document.querySelector(`label[for="${input.id}"]`);
+                        if (label && label.textContent.includes('(*)')) {
+                            input.required = true;
+                        }
+                    });
+                }
             } else {
-                emailField.required = false;
-                passwordField.required = false;
-                confirmPasswordField.required = false;
-            }
-
-
-            if (role === 'mahasiswa') {
-                const mahasiswaSection = document.getElementById('mahasiswa_fields');
-                mahasiswaSection.classList.add('active');
-                // Set required fields untuk mahasiswa
-                mahasiswaSection.querySelector('#nim').required = true;
-                mahasiswaSection.querySelector('#nama_mahasiswa').required = true;
-                mahasiswaSection.querySelector('#prodi').required = true;
-                mahasiswaSection.querySelector('#angkatan').required = true;
-            } else if (role === 'dosen') {
-                const dosenSection = document.getElementById('dosen_fields');
-                dosenSection.classList.add('active');
-                // Set required fields untuk dosen
-                dosenSection.querySelector('#nip').required = true;
-                dosenSection.querySelector('#nama_dosen').required = true;
-            } else if (role === 'perusahaan') {
-                const perusahaanSection = document.getElementById('perusahaan_fields');
-                perusahaanSection.classList.add('active');
-                // Set required fields untuk perusahaan
-                perusahaanSection.querySelector('#nama_perusahaan').required = true;
+                // Sembunyikan auth fields jika belum pilih role
+                authFields.classList.remove('active');
             }
         }
-        // Panggil saat load untuk set kondisi awal (terutama jika ada error dan form di-repopulate)
+        
         document.addEventListener('DOMContentLoaded', toggleRoleFields);
     </script>
 </body>

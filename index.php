@@ -1,6 +1,6 @@
 <?php
-// /KP/index.php
-// Mulai session di paling atas halaman. Session digunakan untuk menyimpan informasi login pengguna.
+// /KP/index.php (Versi Epik dengan Glassmorphism)
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
@@ -167,145 +167,184 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - SIM Kerja Praktek</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #6a11cb; /* Warna Ungu */
+            --secondary-color: #2575fc; /* Warna Biru */
+            --dark-color: #1a1a2e;
+            --light-color: #f4f7f9;
+            --text-color: #5a5a5a;
+            --border-radius: 15px;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5; /* Warna latar belakang sedikit berbeda */
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh; /* Tinggi penuh viewport */
-            margin: 0;
+            /* PERBAIKAN: Latar belakang lebih berwarna dan beranimasi */
+            background: linear-gradient(-45deg, #6a11cb, #2575fc, #ec008c, #fc6767);
+            background-size: 400% 400%;
+            animation: gradientBG 18s ease infinite;
         }
-        .login-wrapper {
-            display: flex; /* Untuk layout jika ingin ada gambar/info di samping form */
-            justify-content: center;
-            align-items: center;
-            width: 100%;
+        
+        /* Animasi Latar Belakang & Partikel */
+        .background-shapes { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .shape {
+            position: absolute; list-style: none; display: block;
+            background: rgba(255, 255, 255, 0.1);
+            animation: moveShape 25s linear infinite;
+            bottom: -200px;
         }
-        .login-container {
-            background-color: #ffffff;
-            padding: 35px 30px; /* Padding sedikit lebih besar */
-            border-radius: 10px; /* Border radius lebih besar */
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); /* Shadow lebih jelas */
-            width: 100%;
-            max-width: 380px; /* Lebar maksimum form */
-            box-sizing: border-box;
-        }
-        .login-container h1 {
-            text-align: center;
-            color: #1c1e21; /* Warna judul lebih gelap */
-            font-size: 24px; /* Ukuran font judul */
-            margin-top: 0;
-            margin-bottom: 25px; /* Jarak bawah judul */
-            font-weight: 600;
-        }
-        .login-container label {
+        /* --- ANIMASI LATAR BELAKANG --- */
+        .background-shapes { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .shape {
+            position: absolute;
+            list-style: none;
             display: block;
-            margin-bottom: 8px;
-            color: #4b4f56; /* Warna label */
-            font-size: 14px; /* Ukuran font label */
-            font-weight: 600;
+            background: rgba(255, 255, 255, 0.15);
+            animation: moveShape 20s linear infinite;
+            bottom: -150px; /* Mulai dari bawah layar */
         }
-        .login-container input[type="text"],
-        .login-container input[type="password"],
-        .login-container select {
+        .shape.s1 { left: 10%; width: 80px; height: 80px; animation-delay: 0s; }
+        .shape.s2 { left: 20%; width: 30px; height: 30px; animation-delay: 2s; animation-duration: 17s; }
+        .shape.s3 { left: 25%; width: 100px; height: 100px; animation-delay: 4s; }
+        .shape.s4 { left: 40%; width: 60px; height: 60px; animation-delay: 0s; animation-duration: 22s; }
+        .shape.s5 { left: 65%; width: 20px; height: 20px; animation-delay: 0s; }
+        .shape.s6 { left: 75%; width: 110px; height: 110px; animation-delay: 3s; }
+        .shape.s7 { left: 90%; width: 150px; height: 150px; animation-delay: 7s; }
+
+        @keyframes moveShape {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 20%; }
+            100% { transform: translateY(-120vh) rotate(720deg); opacity: 0; border-radius: 50%; }
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; }
+        }
+
+        /* --- KARTU KACA (GLASSMORPHISM) --- */
+        .glass-card {
+            position: relative;
+            z-index: 2;
             width: 100%;
-            padding: 12px 15px; /* Padding input lebih besar */
-            margin-bottom: 18px; /* Jarak bawah input */
-            border: 1px solid #ccd0d5; /* Warna border input */
-            border-radius: 6px; /* Border radius input */
-            box-sizing: border-box;
-            font-size: 16px; /* Ukuran font input */
-            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            max-width: 420px;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            animation: fadeInCard 1s ease-out;
+            transition: transform 0.2s ease;
         }
-        .login-container input[type="text"]:focus,
-        .login-container input[type="password"]:focus,
-        .login-container select:focus {
-            border-color: #007bff; /* Warna border saat fokus */
-            outline: 0;
-            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); /* Efek shadow saat fokus */
+        
+        
+        /* Konten Formulir */
+        .form-header h1 { font-size: 2.2rem; font-weight: 700; color: #fff; text-align: center; text-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .form-header p { text-align: center; color: rgba(255,255,255,0.8); margin: -10px 0 2rem 0; }
+        
+        .input-group { position: relative; margin-bottom: 1.5rem; }
+        .input-group label {
+            position: absolute; left: 15px; top: 14px; font-size: 1rem;
+            color: rgba(255,255,255,0.6); pointer-events: none; transition: all 0.3s ease;
         }
-        .login-container button[type="submit"] {
-            width: 100%;
-            padding: 12px;
-            background-color: #007bff; /* Warna tombol utama (biru) */
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.15s ease-in-out;
+        .input-group input, .input-group select {
+            width: 100%; padding: 14px; background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px; font-size: 1rem; color: #fff;
         }
-        .login-container button[type="submit"]:hover {
-            background-color: #0056b3; /* Warna tombol saat hover */
+        .input-group select { appearance: none; -webkit-appearance: none; }
+        .input-group select option { color: #000; }
+        
+        /* PERBAIKAN: CSS untuk floating label yang lebih baik */
+        .input-group input:focus, .input-group select:focus { outline: none; background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8); }
+        .input-group input:focus + label, .input-group input:not(:placeholder-shown) + label,
+        .input-group select:focus + label, .input-group select:valid + label {
+            top: -10px; left: 10px; font-size: 0.8em;
+            background: #393e60; padding: 0 5px; color: #fff;
         }
-        .error-message {
-            color: #dc3545; /* Warna merah untuk error */
-            background-color: #f8d7da; /* Latar belakang error */
-            border: 1px solid #f5c6cb; /* Border error */
-            padding: 10px 15px;
-            margin-bottom: 18px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 14px;
+
+        /* PERBAIKAN: Tombol Login lebih menarik */
+        .btn-submit {
+            width: 100%; padding: 15px; background-size: 200% auto;
+            background-image: linear-gradient(to right, #2575fc 0%, #6a11cb 51%, #2575fc 100%);
+            color: white; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 1.1rem; font-weight: 600; transition: all 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
-        .register-link-container {
-            text-align: center;
-            margin-top: 20px; /* Jarak atas link register */
-            padding-top: 20px;
-            border-top: 1px solid #dadde1; /* Garis pemisah */
+        .btn-submit:hover {
+            background-position: right center; /* Menggerakkan gradien */
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
-        .register-link {
-            color: #007bff;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        .register-link:hover {
-            text-decoration: underline;
-        }
-        .input-group {
-            margin-bottom: 18px;
-        }
+        
+        .register-link-container { text-align: center; margin-top: 1.5rem; color: rgba(255,255,255,0.8); }
+        .register-link { color: #fff; font-weight: 600; }
     </style>
 </head>
 <body>
-    <div class="login-wrapper">
-        <div class="login-container">
-            <h1>SIM Kerja Praktek</h1> <?php if (!empty($error_message)): ?>
-                <div class="error-message">
-                    <?php echo htmlspecialchars($error_message); // htmlspecialchars untuk keamanan dasar ?>
-                </div>
-            <?php endif; ?>
+    <ul class="background-shapes">
+        <?php for ($i = 1; $i <= 7; $i++) echo "<li class='shape s$i'></li>"; ?>
+    </ul>
 
-            <form action="/KP/index.php" method="POST">
-                <div class="input-group">
-                    <label for="username_or_email">NIM/NIP/Username/Email:</label>
-                    <input type="text" id="username_or_email" name="username_or_email" value="<?php echo isset($_POST['username_or_email']) ? htmlspecialchars($_POST['username_or_email']) : ''; ?>" required>
-                </div>
-                <div class="input-group">
-                    <label for="password_input">Password:</label>
-                    <input type="password" id="password_input" name="password_input" required>
-                </div>
-                <div class="input-group">
-                    <label for="role">Login sebagai:</label>
-                    <select id="role" name="role" required>
-                        <option value="">-- Pilih Peran --</option>
-                        <option value="mahasiswa" <?php echo (isset($_POST['role']) && $_POST['role'] == 'mahasiswa') ? 'selected' : ''; ?>>Mahasiswa</option>
-                        <option value="dosen" <?php echo (isset($_POST['role']) && $_POST['role'] == 'dosen') ? 'selected' : ''; ?>>Dosen</option>
-                        <option value="admin_prodi" <?php echo (isset($_POST['role']) && $_POST['role'] == 'admin_prodi') ? 'selected' : ''; ?>>Admin Prodi</option>
-                        <option value="perusahaan" <?php echo (isset($_POST['role']) && $_POST['role'] == 'perusahaan') ? 'selected' : ''; ?>>Perusahaan</option>
-                    </select>
-                </div>
-                <button type="submit">Login</button>
-            </form>
+    <div class="glass-card" id="login-card">
+        <div class="form-header">
+            <h1>SIM-KP</h1>
+            <p>Sistem Informasi Manajemen Kerja Praktek</p>
+        </div>
+        
+        <?php if (!empty($error_message)): ?>
+            <div class="error-message"><?php echo htmlspecialchars($error_message); ?></div>
+        <?php endif; ?>
 
-            <div class="register-link-container">
-                <a href="/KP/register.php" class="register-link">Belum punya akun? Daftar di sini</a>
+        <form action="/KP/index.php" method="POST">
+            <div class="input-group">
+                <input type="text" id="username_or_email" name="username_or_email" placeholder=" " required>
+                <label for="username_or_email">NIM / NIP / Email</label>
             </div>
+            <div class="input-group">
+                <input type="password" id="password_input" name="password_input" placeholder=" " required>
+                <label for="password_input">Password</label>
+            </div>
+            <div class="input-group">
+                <select id="role" name="role" required>
+                    <option value="" disabled selected></option>
+                    <option value="mahasiswa">Mahasiswa</option>
+                    <option value="dosen">Dosen</option>
+                    <option value="admin_prodi">Admin Prodi</option>
+                    <option value="perusahaan">Perusahaan</option>
+                </select>
+                <label for="role">Login Sebagai</label>
+            </div>
+            <button type="submit" class="btn-submit">LOGIN</button>
+        </form>
+
+        <div class="register-link-container">
+            Belum punya akun? <a href="/KP/register.php" class="register-link">Daftar di sini</a>
         </div>
     </div>
+
+    <script>
+        const card = document.getElementById('login-card');
+        if (card) {
+            const cardRect = card.getBoundingClientRect();
+            const cardCenterX = cardRect.left + cardRect.width / 2;
+            const cardCenterY = cardRect.top + cardRect.height / 2;
+
+            document.body.addEventListener('mousemove', e => {
+                const rotateX = -(e.clientY - cardCenterY) / 30; // Pembagi lebih besar untuk efek lebih halus
+                const rotateY = (e.clientX - cardCenterX) / 30;
+                card.style.transform = `perspective(1500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+            });
+
+            document.body.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1500px) rotateX(0) rotateY(0) scale(1)';
+            });
+        }
+    </script>
 </body>
 </html>
