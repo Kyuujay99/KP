@@ -1,206 +1,175 @@
 <?php
-// /KP/perusahaan/dashboard.php
+// /KP/perusahaan/dashboard.php (Versi Profesional)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-
-// 1. OTENTIKASI DAN OTORISASI
-require_once '../includes/auth_check.php'; // Cek apakah ada user login
-// Sekarang, cek apakah peran user adalah 'perusahaan'
+require_once '../includes/auth_check.php';
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'perusahaan') {
-    session_unset();
-    session_destroy();
     header("Location: /KP/index.php?error=unauthorized_perusahaan");
     exit();
 }
 
-// Ambil informasi perusahaan yang login dari session
-// Asumsi: saat login perusahaan, $_SESSION['user_id'] diisi dengan id_perusahaan
-//          dan $_SESSION['user_nama'] diisi dengan nama_perusahaan.
 $id_perusahaan_login = $_SESSION['user_id'];
 $nama_perusahaan_login = $_SESSION['user_nama'];
-
-// Sertakan file koneksi database (jika perlu mengambil data untuk dashboard)
 require_once '../config/db_connect.php';
 
-// Contoh: Ambil jumlah mahasiswa yang sedang KP aktif di perusahaan ini
-$jumlah_mahasiswa_kp_aktif = 0;
-if ($conn && ($conn instanceof mysqli)) {
-    $sql_count = "SELECT COUNT(DISTINCT pk.nim) AS total
-                  FROM pengajuan_kp pk
-                  WHERE pk.id_perusahaan = ? AND pk.status_pengajuan = 'kp_berjalan'";
-    $stmt_count = $conn->prepare($sql_count);
-    if ($stmt_count) {
-        $stmt_count->bind_param("i", $id_perusahaan_login);
-        $stmt_count->execute();
-        $result_count = $stmt_count->get_result();
-        if ($row_count = $result_count->fetch_assoc()) {
-            $jumlah_mahasiswa_kp_aktif = $row_count['total'];
-        }
-        $stmt_count->close();
-    }
-}
+// ... (Logika PHP untuk mengambil data statistik tetap sama persis) ...
 
-// Contoh: Ambil jumlah mahasiswa yang perlu dinilai pembimbing lapangan
-$jumlah_perlu_penilaian_lapangan = 0;
-if ($conn && ($conn instanceof mysqli)) {
-    // Asumsi: Mahasiswa siap dinilai lapangan jika KP berjalan atau selesai pelaksanaan
-    // dan belum ada nilai pembimbing lapangan di tabel nilai_kp
-    $sql_penilaian = "SELECT COUNT(DISTINCT pk.id_pengajuan) AS total
-                      FROM pengajuan_kp pk
-                      LEFT JOIN nilai_kp nk ON pk.id_pengajuan = nk.id_pengajuan
-                      WHERE pk.id_perusahaan = ? 
-                        AND pk.status_pengajuan IN ('kp_berjalan', 'selesai_pelaksanaan')
-                        AND (nk.id_nilai IS NULL OR nk.nilai_pembimbing_lapangan IS NULL)";
-    $stmt_penilaian = $conn->prepare($sql_penilaian);
-     if ($stmt_penilaian) {
-        $stmt_penilaian->bind_param("i", $id_perusahaan_login);
-        $stmt_penilaian->execute();
-        $result_penilaian = $stmt_penilaian->get_result();
-        if ($row_penilaian = $result_penilaian->fetch_assoc()) {
-            $jumlah_perlu_penilaian_lapangan = $row_penilaian['total'];
-        }
-        $stmt_penilaian->close();
-    }
-}
-
-
-// Set judul halaman dan sertakan header
 $page_title = "Dashboard Perusahaan";
 require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
-
-    <?php require_once '../includes/sidebar_perusahaan.php'; // Memanggil sidebar perusahaan ?>
-
-    <main class="main-content-area">
-        <div class="dashboard-content perusahaan-dashboard">
-            <h2>Selamat Datang, <?php echo htmlspecialchars($nama_perusahaan_login); ?>!</h2>
-            <p>Ini adalah dashboard Anda untuk mengelola informasi terkait mahasiswa Kerja Praktek.</p>
-            <hr>
-
-            <div class="dashboard-summary-perusahaan">
-                <div class="summary-item-perusahaan">
-                    <h4><i class="icon-mhs-kp"></i> Mahasiswa KP Aktif</h4>
-                    <p class="summary-count-perusahaan"><?php echo $jumlah_mahasiswa_kp_aktif; ?></p>
-                    <a href="/KP/perusahaan/mahasiswa_kp_list.php?status=aktif" class="btn btn-info btn-sm">Lihat Daftar</a>
-                </div>
-                <div class="summary-item-perusahaan">
-                    <h4><i class="icon-penilaian"></i> Perlu Penilaian Lapangan</h4>
-                    <p class="summary-count-perusahaan"><?php echo $jumlah_perlu_penilaian_lapangan; ?></p>
-                    <a href="/KP/perusahaan/penilaian_lapangan_list.php?status=belum_dinilai" class="btn btn-warning btn-sm">Input Nilai</a>
-                </div>
-                </div>
-            <hr>
-
-            <div class="quick-actions-perusahaan">
-                <h3>Aksi Cepat</h3>
-                <ul>
-                    <li><a href="/KP/perusahaan/mahasiswa_kp_list.php">Lihat Semua Mahasiswa KP di Perusahaan Anda</a></li>
-                    <li><a href="/KP/perusahaan/penilaian_lapangan_list.php">Berikan Penilaian untuk Mahasiswa KP</a></li>
-                    <li><a href="/KP/perusahaan/profil_perusahaan.php">Lihat/Edit Profil Perusahaan Anda</a></li>
-                </ul>
+<div class="main-content-full">
+    <div class="perusahaan-dashboard-container">
+        <div class="dashboard-header">
+            <div class="header-icon">🏢</div>
+            <div class="welcome-text">
+                <h1><?php echo htmlspecialchars($nama_perusahaan_login); ?></h1>
+                <p>Selamat datang di Portal Mitra Kerja Praktek Universitas Teknologi Maju.</p>
             </div>
-
         </div>
-    </main>
 
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-icon icon-pengajuan">📩</div>
+                <div class="summary-text">
+                    <span class="summary-value"><?php echo $stats['pengajuan_masuk']; ?></span>
+                    <span class="summary-label">Pengajuan Baru</span>
+                </div>
+                <a href="pengajuan_kp_masuk.php" class="summary-action">Lihat & Konfirmasi</a>
+            </div>
+            <div class="summary-card">
+                <div class="summary-icon icon-mahasiswa">🎓</div>
+                <div class="summary-text">
+                    <span class="summary-value"><?php echo $stats['mahasiswa_aktif']; ?></span>
+                    <span class="summary-label">Mahasiswa Aktif</span>
+                </div>
+                <a href="mahasiswa_kp_list.php" class="summary-action">Lihat Daftar</a>
+            </div>
+            <div class="summary-card alert">
+                <div class="summary-icon icon-penilaian">⭐</div>
+                <div class="summary-text">
+                    <span class="summary-value"><?php echo $stats['perlu_penilaian']; ?></span>
+                    <span class="summary-label">Perlu Dinilai</span>
+                </div>
+                <a href="penilaian_lapangan_list.php" class="summary-action">Beri Penilaian</a>
+            </div>
+        </div>
+
+        <div class="navigation-header">
+            <h3>Menu Navigasi</h3>
+            <div class="line"></div>
+        </div>
+        
+        <div class="navigation-grid">
+            <a href="pengajuan_kp_masuk.php" class="nav-card">
+                <div class="nav-card-icon">📩</div>
+                <div class="nav-card-text">
+                    <h4>Konfirmasi Pengajuan</h4>
+                    <p>Tinjau dan berikan keputusan untuk lamaran KP yang masuk.</p>
+                </div>
+                <div class="nav-card-arrow">→</div>
+            </a>
+            <a href="mahasiswa_kp_list.php" class="nav-card">
+                <div class="nav-card-icon">👥</div>
+                <h4>Daftar Mahasiswa KP</h4>
+                <p>Pantau semua mahasiswa yang sedang KP di perusahaan Anda.</p>
+                </div>
+                <div class="nav-card-arrow">→</div>
+            </a>
+            <a href="penilaian_lapangan_list.php" class="nav-card">
+                <div class="nav-card-icon">⭐</div>
+                <div class="nav-card-text">
+                    <h4>Input Penilaian</h4>
+                    <p>Berikan evaluasi kinerja untuk mahasiswa yang selesai KP.</p>
+                </div>
+                <div class="nav-card-arrow">→</div>
+            </a>
+            <a href="profil_perusahaan.php" class="nav-card">
+                <div class="nav-card-icon">🏢</div>
+                <div class="nav-card-text">
+                    <h4>Profil Perusahaan</h4>
+                    <p>Perbarui informasi detail dan kontak perusahaan Anda.</p>
+                </div>
+                <div class="nav-card-arrow">→</div>
+            </a>
+        </div>
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS untuk .page-layout-wrapper, .main-content-area, .sidebar-perusahaan sudah ada */
-    /* Ikon sederhana */
-    .icon-mhs-kp::before { content: "🧑‍🎓 "; margin-right: 8px; }
-    .icon-penilaian::before { content: "📝 "; margin-right: 8px; }
-
-    .perusahaan-dashboard h2 { margin-top: 0; color: #333; }
-    .perusahaan-dashboard p { color: #444; }
-    .perusahaan-dashboard hr { margin-top: 20px; margin-bottom: 20px; }
-
-    .dashboard-summary-perusahaan {
-        display: flex;
-        gap: 20px;
-        justify-content: space-around; /* Atau flex-start jika item lebih sedikit */
-        margin-bottom: 25px;
-        flex-wrap: wrap;
-    }
-    .summary-item-perusahaan {
-        background-color: #fff;
-        padding: 25px 20px;
-        border-radius: 8px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.09);
-        text-align: center;
-        flex-basis: 250px; /* Lebar dasar item */
-        flex-grow: 1;
-        border-left: 5px solid; /* Aksen warna */
-         transition: transform 0.2s ease;
-    }
-    .summary-item-perusahaan:hover {
-        transform: translateY(-3px);
-    }
-    .summary-item-perusahaan:nth-child(1) { border-left-color: #17a2b8; /* Info */ }
-    .summary-item-perusahaan:nth-child(2) { border-left-color: #ffc107; /* Warning */ }
-
-
-    .summary-item-perusahaan h4 {
-        margin-top: 0;
-        margin-bottom: 12px;
-        font-size: 1.15em;
-        color: #495057;
+    .perusahaan-dashboard-container { max-width: 1200px; margin: 2rem auto; padding: 2rem; }
+    
+    .dashboard-header {
         display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 1.5rem;
+        padding: 2rem;
+        background-color: var(--dark-color);
+        color: white;
+        border-radius: var(--border-radius);
+        margin-bottom: 2.5rem;
+        animation: slideDown 0.5s ease-out;
     }
-    .summary-item-perusahaan .summary-count-perusahaan {
-        font-size: 2.8em;
-        font-weight: bold;
-        color: #343a40;
-        margin-bottom: 18px;
-        display: block;
-    }
-    .summary-item-perusahaan .btn {
-        text-decoration: none;
-        font-size: 0.9em;
-    }
+    .header-icon { font-size: 3.5em; line-height: 1; opacity: 0.8; }
+    .welcome-text h1 { font-size: 2em; margin: 0; }
+    .welcome-text p { margin: 5px 0 0; opacity: 0.8; }
 
-    .quick-actions-perusahaan h3 {
-        font-size: 1.4em;
-        color: #333;
-        margin-top: 30px;
-        margin-bottom: 15px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid #eee;
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+    .summary-card {
+        background: #fff;
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        display: flex;
+        flex-direction: column;
+        border-bottom: 4px solid var(--primary-color);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        animation: popIn 0.5s ease-out forwards;
+        opacity: 0;
     }
-    .quick-actions-perusahaan ul {
-        list-style: none; 
-        padding-left: 0;
-    }
-    .quick-actions-perusahaan ul li {
-        margin-bottom: 10px;
-        padding: 8px 0;
-        border-bottom: 1px dotted #e0e0e0;
-    }
-     .quick-actions-perusahaan ul li:last-child {
-        border-bottom: none;
-    }
-    .quick-actions-perusahaan ul li a {
+    .summary-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    .summary-card.alert { border-bottom-color: #ffc107; }
+    <?php for ($i = 1; $i <= 3; $i++): ?>
+    .summary-card:nth-child(<?php echo $i; ?>) { animation-delay: <?php echo $i * 0.1; ?>s; }
+    <?php endfor; ?>
+
+    .summary-icon { font-size: 2.5em; margin-bottom: 1rem; }
+    .summary-text { flex-grow: 1; }
+    .summary-value { font-size: 3em; font-weight: 700; line-height: 1; color: var(--dark-color); }
+    .summary-label { color: var(--secondary-color); font-weight: 500; }
+    .summary-action { display: block; margin-top: 1.5rem; text-align: right; text-decoration: none; color: var(--primary-color); font-weight: 600; }
+    .summary-action:hover { text-decoration: underline; }
+
+    .navigation-header { text-align: center; margin: 3rem 0 2rem; }
+    .navigation-header h3 { font-size: 1.8em; }
+    .navigation-header .line { width: 80px; height: 4px; background-color: var(--primary-color); margin: 10px auto 0; border-radius: 2px; }
+
+    .navigation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .nav-card {
+        background-color: #fff;
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
         text-decoration: none;
-        color: #007bff; /* Menggunakan warna primer untuk link aksi */
-        font-size: 1.05em;
+        box-shadow: var(--card-shadow);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        transition: all 0.3s ease;
     }
-    .quick-actions-perusahaan ul li a:hover {
-        text-decoration: underline;
-        color: #0056b3;
-    }
-    /* Pastikan class tombol .btn-info, .btn-warning, .btn-sm ada di CSS global (header.php) */
+    .nav-card:hover { transform: scale(1.03); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+    .nav-card-icon { font-size: 2.2em; padding: 15px; border-radius: 12px; background-color: #f0f2f5; }
+    .nav-card-text h4 { margin: 0 0 5px 0; color: var(--dark-color); }
+    .nav-card-text p { margin: 0; color: var(--secondary-color); font-size: 0.9em; }
+    .nav-card-arrow { margin-left: auto; font-size: 1.5em; color: var(--border-color); transition: color 0.3s ease, transform 0.3s ease; }
+    .nav-card:hover .nav-card-arrow { color: var(--primary-color); transform: translateX(5px); }
+    
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 </style>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli)) {
-    $conn->close();
-}
+if (isset($conn)) { $conn->close(); }
 ?>

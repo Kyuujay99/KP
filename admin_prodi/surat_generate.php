@@ -60,12 +60,12 @@ if (empty($error_message)) {
 }
 
 // Informasi statis untuk surat
-$nama_universitas = "UNIVERSITAS TEKNOLOGI MAJU";
-$nama_fakultas = "FAKULTAS TEKNIK DAN ILMU KOMPUTER";
-$nama_prodi_penyelenggara = "Program Studi Teknik Informatika";
+$nama_universitas = "UNIVERSITAS TTUNOJOYO MADURA";
+$nama_fakultas = "FAKULTAS TEKNIK";
+$nama_prodi_penyelenggara = "Program Studi SISTEM INFORMASI";
 $alamat_kampus = "Jl. Pendidikan No. 123, Kota Belajar, 54321";
-$kontak_kampus = "Telp: (021) 1234567 | Email: info@utem.ac.id";
-$kota_surat_dibuat = "Kota Belajar";
+$kontak_kampus = "Telp: (021) 1234567 | Email: info@utm.ac.id";
+$kota_surat_dibuat = "Bangkalan";
 $jabatan_penandatangan = "Ketua Program Studi Teknik Informatika";
 $nama_penandatangan = "Dr. Ir. Budi Santoso, M.Kom.";
 $nip_penandatangan = "19700101 199503 1 001";
