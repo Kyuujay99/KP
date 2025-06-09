@@ -1,5 +1,5 @@
 <?php
-// /KP/admin_prodi/pengguna_mahasiswa_tambah.php (Versi Final)
+// /KP/admin_prodi/pengguna_mahasiswa_tambah.php (Versi Disempurnakan)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -56,6 +56,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_tambah_mahasisw
             } else {
                 $sql_insert = "INSERT INTO mahasiswa (nim, password, nama, email, no_hp, prodi, angkatan, status_akun) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                 $stmt_insert = $conn->prepare($sql_insert);
+                // Di dunia nyata, gunakan password_hash()
+                // $hashed_password = password_hash($password_input, PASSWORD_DEFAULT);
                 $stmt_insert->bind_param("ssssssis", $input_nim, $password_input, $input_nama, $input_email, $input_no_hp, $input_prodi, $input_angkatan, $input_status_akun);
                 if ($stmt_insert->execute()) {
                     $success_message = "Mahasiswa baru '" . htmlspecialchars($input_nama) . "' berhasil ditambahkan.";
@@ -88,15 +90,21 @@ $page_title = "Tambah Akun Mahasiswa Baru";
 require_once '../includes/header.php';
 ?>
 
-<div class="main-content-full">
-    <div class="form-container-modern">
-        <div class="form-header">
+<div class="form-container-modern">
+    <div class="form-hero-section">
+        <div class="form-hero-content">
+            <div class="form-hero-icon">
+                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
             <p>Isi formulir di bawah ini untuk menambahkan akun mahasiswa baru ke dalam sistem.</p>
         </div>
+    </div>
 
+    <div class="form-wrapper">
         <?php if (!empty($success_message)): ?>
             <div class="message success">
+                <h4>Berhasil!</h4>
                 <p><?php echo htmlspecialchars($success_message); ?></p>
                 <a href="pengguna_mahasiswa_kelola.php" class="btn btn-secondary">Kembali ke Daftar Mahasiswa</a>
             </div>
@@ -105,10 +113,12 @@ require_once '../includes/header.php';
             <div class="message error"><p><?php echo htmlspecialchars($error_message); ?></p></div>
         <?php endif; ?>
 
-        <?php if (!$success_message): // Sembunyikan form jika sukses ?>
+        <?php if (!$success_message): ?>
         <form action="pengguna_mahasiswa_tambah.php" method="POST" class="modern-form">
             <fieldset>
-                <div class="fieldset-header"><h4>Data Identitas & Login</h4></div>
+                <div class="fieldset-header">
+                    <h4><i class="icon">👤</i>Data Identitas & Login</h4>
+                </div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="nim">NIM (*)</label>
@@ -141,7 +151,9 @@ require_once '../includes/header.php';
             </fieldset>
 
             <fieldset>
-                <div class="fieldset-header"><h4>Data Akademik & Status Akun</h4></div>
+                <div class="fieldset-header">
+                    <h4><i class="icon">🎓</i>Data Akademik & Status</h4>
+                </div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="prodi">Program Studi (*)</label>
@@ -181,8 +193,51 @@ require_once '../includes/header.php';
 </div>
 
 <style>
-    /* Menggunakan gaya dari halaman form modern lainnya */
-    .form-container-modern { max-width: 900px; }
+/* Modern Form Styles */
+:root {
+    --primary-color: #667eea;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --bg-light: #f9fafb;
+    --border-color: #e5e7eb;
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.07);
+    --border-radius: 16px;
+}
+.form-container-modern { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+.form-container-modern svg { stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; stroke: currentColor; }
+.form-hero-section {
+    padding: 3rem 2rem; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    border-radius: var(--border-radius); margin-bottom: 2rem; color: white; text-align: center;
+}
+.form-hero-content { max-width: 600px; margin: 0 auto; }
+.form-hero-icon { width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+.form-hero-icon svg { width: 28px; height: 28px; stroke: white; }
+.form-hero-section h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.form-hero-section p { font-size: 1.1rem; opacity: 0.9; font-weight: 300; }
+.form-wrapper { background-color: #ffffff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--card-shadow); }
+
+.modern-form fieldset { border: none; padding: 0; margin-bottom: 2.5rem; }
+.fieldset-header { display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); }
+.fieldset-header h4 { margin: 0; font-size: 1.25rem; }
+.fieldset-header .icon { font-style: normal; color: var(--primary-color); }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; font-weight: 500; margin-bottom: 0.5rem; font-size: 0.95rem; }
+.form-group input, .form-group select {
+    width: 100%; padding: 12px 15px; border: 1px solid var(--border-color);
+    border-radius: 8px; font-size: 1em; font-family: 'Inter', sans-serif;
+    transition: all 0.2s ease; background-color: var(--bg-light);
+}
+.form-group input:focus, .form-group select:focus {
+    border-color: var(--primary-color); background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2); outline: none;
+}
+.form-group small { font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; }
+
+.form-actions { display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.btn-secondary { background-color: var(--bg-light); color: var(--text-secondary); border: 1px solid var(--border-color); }
+.btn-primary { background-color: var(--primary-color); color: white; }
 </style>
 
 <?php

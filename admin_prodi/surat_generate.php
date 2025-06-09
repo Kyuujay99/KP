@@ -1,9 +1,10 @@
 <?php
-// /KP/admin_prodi/surat_generate.php (Versi Final dan Lengkap)
+// /KP/admin_prodi/surat_generate.php (Versi Final dan Disempurnakan)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
 require_once '../includes/auth_check.php';
 if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin_prodi') {
     header("Location: /KP/index.php?error=unauthorized_admin_surat");
@@ -60,18 +61,21 @@ if (empty($error_message)) {
 }
 
 // Informasi statis untuk surat
-$nama_universitas = "UNIVERSITAS TTUNOJOYO MADURA";
+$nama_kementerian = "KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI";
+$nama_universitas = "UNIVERSITAS TRUNOJOYO MADURA";
 $nama_fakultas = "FAKULTAS TEKNIK";
-$nama_prodi_penyelenggara = "Program Studi SISTEM INFORMASI";
-$alamat_kampus = "Jl. Pendidikan No. 123, Kota Belajar, 54321";
-$kontak_kampus = "Telp: (021) 1234567 | Email: info@utm.ac.id";
+$nama_prodi_penyelenggara = "PROGRAM STUDI SISTEM INFORMASI";
+$alamat_kampus = "Jl. Raya Telang, PO. Box 2 Kamal, Bangkalan, Madura 69162";
+$kontak_kampus = "Telp: (031) 3011146 | Fax: (031) 3011506";
+$website_kampus = "Laman: www.trunojoyo.ac.id";
+
 $kota_surat_dibuat = "Bangkalan";
-$jabatan_penandatangan = "Ketua Program Studi Teknik Informatika";
+$jabatan_penandatangan = "Ketua Program Studi Sistem Informasi";
 $nama_penandatangan = "Dr. Ir. Budi Santoso, M.Kom.";
-$nip_penandatangan = "19700101 199503 1 001";
+$nip_penandatangan = "197001011995031001";
 $tanggal_surat = date("d F Y");
 
-$page_title = "Generate Surat"; // Judul default
+$page_title = "Generate Surat";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -80,113 +84,247 @@ $page_title = "Generate Surat"; // Judul default
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($page_title); ?></title>
     <style>
-        /* ... (Seluruh CSS dari file asli bisa disalin di sini) ... */
-        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; background-color: #e0e0e0; margin: 0; padding: 20px 0; }
-        .surat-container { width: 21cm; min-height: 29.7cm; padding: 2.5cm; margin: 20px auto; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.5); box-sizing: border-box; }
-        .print-button-container { text-align: center; padding: 20px; background-color: #f0f0f0; border-bottom: 1px solid #ccc; }
-        .print-button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
-        .kop-surat { text-align: center; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 20px; }
-        .kop-surat h1, .kop-surat h2 { margin: 0; text-transform: uppercase; }
-        .kop-surat h1 { font-size: 16pt; } .kop-surat h2 { font-size: 14pt; }
-        .isi-surat { text-align: justify; }
-        .detail-mahasiswa table { margin-left: 40px; }
-        .tanda-tangan-section { margin-top: 50px; }
-        .tanda-tangan-blok { width: 45%; float: right; }
-        @media print { .print-button-container { display: none !important; } .surat-container { margin: 0; box-shadow: none; border: none; } }
+        body {
+            background-color: #e0e0e0;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            margin: 0;
+            padding: 20px 0;
+        }
+        .page-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .print-controls {
+            width: 21cm;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        .print-controls button, .print-controls a {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+            text-decoration: none;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        .surat-a4 {
+            width: 21cm;
+            min-height: 29.7cm;
+            padding: 2.5cm 2.5cm 2cm 2.5cm;
+            margin: 0 auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        .kop-surat {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 4px double black;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+        .logo-container {
+            width: 90px;
+            height: 90px;
+        }
+        .logo-container img {
+            width: 100%;
+            height: auto;
+        }
+        .kop-text {
+            text-align: center;
+            flex-grow: 1;
+            line-height: 1.2;
+        }
+        .kop-text p { margin: 0; }
+        .kop-kementerian { font-size: 12pt; font-weight: bold; }
+        .kop-universitas { font-size: 14pt; font-weight: bold; }
+        .kop-fakultas { font-size: 16pt; font-weight: bold; }
+        .kop-prodi { font-size: 14pt; font-weight: bold; }
+        .kop-kontak { font-size: 9pt; }
+        
+        .nomor-surat { margin-top: 20px; }
+        .nomor-surat td { padding: 2px 0; vertical-align: top; }
+        .nomor-surat .label { width: 80px; }
+        .nomor-surat .separator { width: 10px; }
+
+        .tujuan-surat { margin-top: 20px; }
+        .isi-surat { margin-top: 20px; text-align: justify; }
+        .isi-surat p { text-indent: 4em; margin: 1em 0; }
+        
+        .detail-table { margin: 1em 0 1em 4em; }
+        .detail-table td { padding: 2px 0; vertical-align: top; }
+        .detail-table .label { width: 120px; }
+        .detail-table .separator { width: 10px; }
+        
+        .tanda-tangan { margin-top: 50px; }
+        .ttd-blok {
+            width: 50%;
+            margin-left: 50%;
+            line-height: 1.3;
+        }
+
+        @media print {
+            body { background-color: #fff; padding: 0; }
+            .print-controls { display: none !important; }
+            .surat-a4 { margin: 0; box-shadow: none; border: none; }
+        }
     </style>
 </head>
 <body>
-    <div class="print-button-container">
-        <button onclick="window.print()" class="print-button">Cetak Surat Ini</button>
-        <a href="surat_generate_list.php">Kembali ke Daftar</a>
-    </div>
-
-    <?php if (!empty($error_message)): ?>
-        <div class="surat-container" style="text-align:center;">
-            <h2 style="color:red;">Error</h2>
-            <p><?php echo htmlspecialchars($error_message); ?></p>
+    <div class="page-wrapper">
+        <div class="print-controls">
+            <button onclick="window.print()">Cetak Surat</button>
+            <a href="surat_generate_list.php">Kembali ke Daftar</a>
         </div>
-    <?php elseif ($data_surat): ?>
-        
-        <?php if ($tipe_surat === 'pengantar'): ?>
-            <div class="surat-container">
-                <div class="kop-surat">
-                    <h1><?php echo $nama_universitas; ?></h1>
-                    <h2><?php echo $nama_fakultas; ?></h2>
-                </div>
-                <p style="text-align: right;"><?php echo $kota_surat_dibuat . ", " . $tanggal_surat; ?></p>
-                <p><strong>Perihal: Permohonan Izin Kerja Praktek</strong></p>
-                <p>Yth. Pimpinan HRD<br>
-                <strong><?php echo htmlspecialchars($data_surat['nama_perusahaan']); ?></strong><br>
-                Di Tempat</p>
-                <div class="isi-surat">
-                    <p>Dengan hormat,</p>
-                    <p>Sehubungan dengan pelaksanaan program Kerja Praktek (KP) bagi mahasiswa <?php echo htmlspecialchars($nama_prodi_penyelenggara); ?>, dengan ini kami mengajukan permohonan agar mahasiswa kami berikut ini:</p>
-                    <div class="detail-mahasiswa">
-                        <table>
-                            <tr><td>Nama</td><td>: <?php echo htmlspecialchars($data_surat['nama_mahasiswa']); ?></td></tr>
-                            <tr><td>NIM</td><td>: <?php echo htmlspecialchars($data_surat['nim']); ?></td></tr>
-                        </table>
-                    </div>
-                    <p>dapat melaksanakan Kerja Praktek di perusahaan/instansi yang Bapak/Ibu pimpin, yang direncanakan pada periode <strong><?php echo date("d M Y", strtotime($data_surat['tanggal_mulai_rencana'])); ?></strong> sampai dengan <strong><?php echo date("d M Y", strtotime($data_surat['tanggal_selesai_rencana'])); ?></strong>.</p>
-                    <p>Demikian permohonan ini kami sampaikan. Atas perhatian dan kerjasama Bapak/Ibu, kami ucapkan terima kasih.</p>
-                </div>
-                <div class="tanda-tangan-section">
-                    <div class="tanda-tangan-blok">
-                        Hormat kami,<br>
-                        <?php echo $jabatan_penandatangan; ?>,<br><br><br><br>
-                        <strong><u><?php echo $nama_penandatangan; ?></u></strong><br>
-                        NIP. <?php echo $nip_penandatangan; ?>
-                    </div>
-                </div>
-            </div>
 
-        <?php elseif ($tipe_surat === 'tugas'): ?>
-            <div class="surat-container">
-                <div class="kop-surat">
-                    <h1><?php echo $nama_universitas; ?></h1>
-                    <h2><?php echo $nama_fakultas; ?></h2>
-                </div>
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h3 style="text-decoration: underline; font-size: 14pt;">SURAT TUGAS</h3>
-                    <span>Nomor: ST/<?php echo $id_pengajuan_url; ?>/FTIK-TI/KP/<?php echo date('Y'); ?></span>
-                </div>
-                <div class="isi-surat">
-                    <p>Yang bertanda tangan di bawah ini, <?php echo $jabatan_penandatangan; ?>, dengan ini memberikan tugas kepada:</p>
-                    <div class="detail-mahasiswa">
-                        <table>
-                            <tr><td>Nama</td><td>: <?php echo htmlspecialchars($data_surat['nama_dosen_pembimbing'] ?: 'N/A'); ?></td></tr>
-                            <tr><td>NIP</td><td>: <?php echo htmlspecialchars($data_surat['nip_dosen_pembimbing'] ?: 'N/A'); ?></td></tr>
-                            <tr><td>Jabatan</td><td>: Dosen <?php echo $nama_prodi_penyelenggara; ?></td></tr>
-                        </table>
-                    </div>
-                    <p>Untuk menjadi Dosen Pembimbing Kerja Praktek (KP) bagi mahasiswa berikut:</p>
-                    <div class="detail-mahasiswa">
-                        <table>
-                            <tr><td>Nama</td><td>: <?php echo htmlspecialchars($data_surat['nama_mahasiswa']); ?></td></tr>
-                            <tr><td>NIM</td><td>: <?php echo htmlspecialchars($data_surat['nim']); ?></td></tr>
-                            <tr><td>Tempat KP</td><td>: <?php echo htmlspecialchars($data_surat['nama_perusahaan'] ?: 'N/A'); ?></td></tr>
-                        </table>
-                    </div>
-                    <p>Demikian Surat Tugas ini dibuat untuk dapat dilaksanakan dengan sebaik-baiknya.</p>
-                </div>
-                <div class="tanda-tangan-section">
-                    <div class="tanda-tangan-blok">
-                        Hormat kami,<br>
-                        <?php echo $jabatan_penandatangan; ?>,<br><br><br><br>
-                        <strong><u><?php echo $nama_penandatangan; ?></u></strong><br>
-                        NIP. <?php echo $nip_penandatangan; ?>
-                    </div>
-                </div>
+        <?php if (!empty($error_message)): ?>
+            <div class="surat-a4" style="text-align:center;">
+                <h2 style="color:red;">Error</h2>
+                <p><?php echo htmlspecialchars($error_message); ?></p>
             </div>
+        <?php elseif ($data_surat): ?>
+            
+            <?php if ($tipe_surat === 'pengantar'): ?>
+                <div class="surat-a4">
+                    <div class="kop-surat">
+                        <div class="logo-container">
+                            <img src="../assett/images/logo/utm.png" alt="Logo UTM">
+                        </div>
+                        <div class="kop-text">
+                            <p class="kop-universitas"><?php echo $nama_universitas; ?></p>
+                            <p class="kop-fakultas"><?php echo $nama_fakultas; ?></p>
+                            <p class="kop-prodi"><?php echo $nama_prodi_penyelenggara; ?></p>
+                            <p class="kop-kontak"><?php echo $alamat_kampus; ?></p>
+                            <p class="kop-kontak"><?php echo $kontak_kampus; ?> | <?php echo $website_kampus; ?></p>
+                        </div>
+                    </div>
 
-        <?php else: ?>
-            <div class="surat-container" style="text-align:center;">
-                <h2 style="color:orange;">Peringatan</h2>
-                <p>Tipe surat "<?php echo htmlspecialchars($tipe_surat); ?>" tidak dikenali atau belum memiliki template.</p>
-            </div>
+                    <p style="text-align: right; margin-top:20px;"><?php echo $kota_surat_dibuat . ", " . $tanggal_surat; ?></p>
+                    
+                    <table class="nomor-surat">
+                        <tr><td class="label">Nomor</td><td class="separator">:</td><td> ... /UN46.4.8/KP/<?php echo date('Y'); ?></td></tr>
+                        <tr><td class="label">Lampiran</td><td class="separator">:</td><td>-</td></tr>
+                        <tr><td class="label">Perihal</td><td class="separator">:</td><td><strong>Permohonan Izin Kerja Praktek</strong></td></tr>
+                    </table>
+
+                    <div class="tujuan-surat">
+                        <p>Yth. Pimpinan HRD<br>
+                        <strong><?php echo htmlspecialchars($data_surat['nama_perusahaan'] ?? 'Perusahaan Terkait'); ?></strong><br>
+                        Di Tempat</p>
+                    </div>
+
+                    <div class="isi-surat">
+                        <p>Dengan hormat,</p>
+                        <p>Sehubungan dengan salah satu mata kuliah wajib dalam kurikulum <?php echo htmlspecialchars($nama_prodi_penyelenggara); ?>, Fakultas Teknik, Universitas Trunojoyo Madura, yaitu Kerja Praktek (KP), dengan ini kami mengajukan permohonan agar mahasiswa kami berikut ini:</p>
+                        
+                        <table class="detail-table">
+                            <tr><td class="label">Nama</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nama_mahasiswa']); ?></td></tr>
+                            <tr><td class="label">NIM</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nim']); ?></td></tr>
+                        </table>
+
+                        <p>dapat diterima untuk melaksanakan Kerja Praktek di perusahaan/instansi yang Bapak/Ibu pimpin. Pelaksanaan KP direncanakan akan berlangsung pada periode <strong><?php echo date("d M Y", strtotime($data_surat['tanggal_mulai_rencana'])); ?></strong> sampai dengan <strong><?php echo date("d M Y", strtotime($data_surat['tanggal_selesai_rencana'])); ?></strong> (atau sesuai dengan kebijakan perusahaan).</p>
+                        <p>Demikian surat permohonan ini kami sampaikan. Atas perhatian, bantuan, dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.</p>
+                    </div>
+
+                    <!-- <div class="tanda-tangan">
+                        <div class="ttd-blok">
+                            <p>Hormat kami,<br>
+                            <?php echo $jabatan_penandatangan; ?>,</p>
+                            <br><br><br><br>
+                            <p><strong><u><?php echo $nama_penandatangan; ?></u></strong><br>
+                            NIP. <?php echo $nip_penandatangan; ?></p>
+                        </div>
+                    </div> -->
+                    <div class="tanda-tangan">
+                        <div class="ttd-blok">
+                            <p>Hormat kami,<br>
+                            a.n. Ketua Program Studi Sistem Informasi,<br>
+                            Dosen Pembimbing,</p>
+                            <br><br><br><br>
+                            <p><strong><u><?php echo htmlspecialchars($data_surat['nama_dosen_pembimbing'] ?? 'Dosen Belum Ditentukan'); ?></u></strong><br>
+                            NIP. <?php echo htmlspecialchars($data_surat['nip_dosen_pembimbing'] ?? '-'); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+            <?php elseif ($tipe_surat === 'tugas'): ?>
+                <div class="surat-a4">
+                     <div class="kop-surat">
+                        <div class="logo-container">
+                             <img src="../assett/images/logo/utm.png" alt="Logo UTM">
+                        </div>
+                        <div class="kop-text">
+                            <p class="kop-universitas"><?php echo $nama_universitas; ?></p>
+                            <p class="kop-fakultas"><?php echo $nama_fakultas; ?></p>
+                            <p class="kop-prodi"><?php echo $nama_prodi_penyelenggara; ?></p>
+                            <p class="kop-kontak"><?php echo $alamat_kampus; ?></p>
+                            <p class="kop-kontak"><?php echo $kontak_kampus; ?> | <?php echo $website_kampus; ?></p>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+                        <h3 style="text-decoration: underline; margin-bottom: 5px; font-size: 14pt;">SURAT TUGAS</h3>
+                        <span>Nomor: ... /UN46.4.8/ST-KP/<?php echo date('Y'); ?></span>
+                    </div>
+
+                    <div class="isi-surat">
+                        <p style="text-indent: 0;">Yang bertanda tangan di bawah ini, <?php echo $jabatan_penandatangan; ?>, Fakultas Teknik, Universitas Trunojoyo Madura, dengan ini memberikan tugas kepada:</p>
+                        
+                        <table class="detail-table">
+                            <tr><td class="label">Nama</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nama_dosen_pembimbing'] ?? '<em>Belum ditentukan</em>'); ?></td></tr>
+                            <tr><td class="label">NIP</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nip_dosen_pembimbing'] ?? '<em>-</em>'); ?></td></tr>
+                            <tr><td class="label">Jabatan</td><td class="separator">:</td><td>Dosen Program Studi Sistem Informasi</td></tr>
+                        </table>
+
+                        <p style="text-indent: 0;">Untuk menjadi Dosen Pembimbing Kerja Praktek (KP) bagi mahasiswa berikut:</p>
+                        
+                        <table class="detail-table">
+                            <tr><td class="label">Nama</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nama_mahasiswa']); ?></td></tr>
+                            <tr><td class="label">NIM</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nim']); ?></td></tr>
+                            <tr><td class="label">Tempat KP</td><td class="separator">:</td><td><?php echo htmlspecialchars($data_surat['nama_perusahaan'] ?? 'N/A'); ?></td></tr>
+                        </table>
+
+                        <p>Demikian Surat Tugas ini dibuat untuk dapat dilaksanakan dengan sebaik-baiknya dan penuh tanggung jawab.</p>
+                    </div>
+
+                    <!-- <div class="tanda-tangan" style="margin-top: 30px;">
+                         <div class="ttd-blok">
+                            <p><?php echo $kota_surat_dibuat . ", " . $tanggal_surat; ?><br>
+                            <?php echo $jabatan_penandatangan; ?>,</p>
+                            <br><br><br><br>
+                            <p><strong><u><?php echo $nama_penandatangan; ?></u></strong><br>
+                            NIP. <?php echo $nip_penandatangan; ?></p>
+                        </div>
+                    </div> -->
+                    <div class="tanda-tangan">
+                        <div class="ttd-blok">
+                            <p>Hormat kami,<br>
+                            a.n. Ketua Program Studi Sistem Informasi,<br>
+                            Dosen Pembimbing,</p>
+                            <br><br><br><br>
+                            <p><strong><u><?php echo htmlspecialchars($data_surat['nama_dosen_pembimbing'] ?? 'Dosen Belum Ditentukan'); ?></u></strong><br>
+                            NIP. <?php echo htmlspecialchars($data_surat['nip_dosen_pembimbing'] ?? '-'); ?></p>
+                        </div>
+                    </div>
+                </div>
+
+            <?php else: ?>
+                <div class="surat-a4" style="text-align:center;">
+                    <h2 style="color:orange;">Peringatan</h2>
+                    <p>Tipe surat "<?php echo htmlspecialchars($tipe_surat); ?>" tidak dikenali atau belum memiliki template.</p>
+                </div>
+            <?php endif; ?>
+
         <?php endif; ?>
-
-    <?php endif; ?>
+    </div>
 </body>
 </html>

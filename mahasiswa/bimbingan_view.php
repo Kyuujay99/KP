@@ -131,6 +131,23 @@ require_once '../includes/header.php';
 
 <style>
 /* GAYA BARU YANG TERISOLASI DALAM KONTENER */
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --warning-gradient: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    --danger-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    --card-shadow-hover: 0 20px 40px rgba(0,0,0,0.15);
+    --border-radius: 16px;
+    --border-radius-large: 24px;
+    
+    --text-primary: #2d3748;
+    --text-secondary: #718096;
+    --text-muted: #a0aec0;
+}
 .kp-bimbingan-modern-container {
     --primary-color: #667eea;
     --text-primary: #1f2937; --text-secondary: #6b7280;

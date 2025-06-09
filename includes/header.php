@@ -1,5 +1,6 @@
+
 <?php
-// /KP/includes/header.php (Versi Final dengan Dropdown Klik)
+// /KP/includes/header.php (Versi Final dengan Perbaikan Menu Mahasiswa)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -15,10 +16,45 @@ $user_role_display = $is_logged_in ? htmlspecialchars(ucfirst(str_replace('_', '
 
 // Definisikan item menu untuk setiap peran
 $menu_items = [
-    'mahasiswa' => [ 'Dashboard' => '/mahasiswa/dashboard.php', 'Profil Saya' => '/mahasiswa/profil.php', 'Pengajuan KP' => '/mahasiswa/pengajuan_kp_view.php', 'Bimbingan' => '/mahasiswa/bimbingan_view.php', 'Logbook' => '/mahasiswa/logbook_view.php', 'Dokumen' => '/mahasiswa/dokumen_view.php' ],
-    'dosen' => [ 'Dashboard' => '/dosen/dashboard.php', 'Profil Saya' => '/dosen/profil.php', 'Verifikasi Pengajuan' => '/dosen/pengajuan_list.php', 'Mahasiswa Bimbingan' => '/dosen/bimbingan_mahasiswa_list.php', 'Jadwal Seminar' => '/dosen/seminar_jadwal_list.php', 'Input Nilai' => '/dosen/nilai_input_list.php' ],
-    'admin_prodi' => [ 'Dashboard' => '/admin_prodi/dashboard.php', 'Monitoring Pengajuan' => '/admin_prodi/pengajuan_kp_monitoring.php', 'Kelola Mahasiswa' => '/admin_prodi/pengguna_mahasiswa_kelola.php', 'Kelola Dosen' => '/admin_prodi/pengguna_dosen_kelola.php', 'Kelola Perusahaan' => '/admin_prodi/perusahaan_kelola.php', 'Manajemen Surat' => '/admin_prodi/surat_generate_list.php', 'Verifikasi Dokumen' => '/admin_prodi/dokumen_verifikasi_list.php', 'Laporan KP' => '/admin_prodi/laporan_kp_view.php' ],
-    'perusahaan' => [ 'Dashboard' => '/perusahaan/dashboard.php', 'Profil Perusahaan' => '/perusahaan/profil_perusahaan.php', 'Pengajuan Masuk' => '/perusahaan/pengajuan_kp_masuk.php', 'Mahasiswa KP' => '/perusahaan/mahasiswa_kp_list.php', 'Input Penilaian' => '/perusahaan/penilaian_lapangan_list.php' ]
+    'mahasiswa' => [
+        'Dashboard' => '/mahasiswa/dashboard.php',
+        'Profil Saya' => '/mahasiswa/profil.php',
+        'Pengajuan KP' => '/mahasiswa/pengajuan_kp_view.php',
+        'Bimbingan' => '/mahasiswa/bimbingan_view.php',
+        'Logbook' => '/mahasiswa/logbook_view.php',
+        'Dokumen' => '/mahasiswa/dokumen_view.php',
+        'Seminar' => '/mahasiswa/seminar_view.php',
+        'Nilai' => '/mahasiswa/nilai_view.php', // <-- MENU NILAI DITAMBAHKAN DI SINI
+        'Panduan Pengguna' => '/panduan.php'
+    ],
+    'dosen' => [
+        'Dashboard' => '/dosen/dashboard.php',
+        'Profil Saya' => '/dosen/profil.php',
+        'Verifikasi Pengajuan' => '/dosen/pengajuan_list.php',
+        'Mahasiswa Bimbingan' => '/dosen/bimbingan_mahasiswa_list.php',
+        'Jadwal Seminar' => '/dosen/seminar_jadwal_list.php',
+        'Input Nilai' => '/dosen/nilai_input_list.php',
+        'Panduan Pengguna' => '/panduan.php'
+    ],
+    'admin_prodi' => [
+        'Dashboard' => '/admin_prodi/dashboard.php',
+        'Monitoring Pengajuan' => '/admin_prodi/pengajuan_kp_monitoring.php',
+        'Kelola Mahasiswa' => '/admin_prodi/pengguna_mahasiswa_kelola.php',
+        'Kelola Dosen' => '/admin_prodi/pengguna_dosen_kelola.php',
+        'Kelola Perusahaan' => '/admin_prodi/perusahaan_kelola.php',
+        'Manajemen Surat' => '/admin_prodi/surat_generate_list.php',
+        'Verifikasi Dokumen' => '/admin_prodi/dokumen_verifikasi_list.php',
+        'Laporan KP' => '/admin_prodi/laporan_kp_view.php',
+        'Panduan Pengguna' => '/panduan.php'
+    ],
+    'perusahaan' => [
+        'Dashboard' => '/perusahaan/dashboard.php',
+        'Profil Perusahaan' => '/perusahaan/profil_perusahaan.php',
+        'Pengajuan Masuk' => '/perusahaan/pengajuan_kp_masuk.php',
+        'Mahasiswa KP' => '/perusahaan/mahasiswa_kp_list.php',
+        'Input Penilaian' => '/perusahaan/penilaian_lapangan_list.php',
+        'Panduan Pengguna' => '/panduan.php'
+    ]
 ];
 
 // Icon mapping untuk menu items
@@ -26,10 +62,13 @@ $menu_icons = [
     'Dashboard' => '🏠', 'Profil Saya' => '👤', 'Profil Perusahaan' => '🏢',
     'Pengajuan KP' => '📝', 'Pengajuan Masuk' => '📨', 'Monitoring Pengajuan' => '📊',
     'Verifikasi Pengajuan' => '✅', 'Bimbingan' => '👨‍🏫', 'Mahasiswa Bimbingan' => '👥',
-    'Mahasiswa KP' => '🎓', 'Logbook' => '📖', 'Dokumen' => '📄',
+    'Mahasiswa KP' => '�', 'Logbook' => '📖', 'Dokumen' => '📄',
+    'Seminar' => '📅',
+    'Nilai' => '💯', // <-- IKON UNTUK NILAI DITAMBAHKAN
     'Verifikasi Dokumen' => '📋', 'Jadwal Seminar' => '📅', 'Input Nilai' => '💯',
     'Input Penilaian' => '⭐', 'Kelola Mahasiswa' => '👨‍🎓', 'Kelola Dosen' => '👨‍🏫',
-    'Kelola Perusahaan' => '🏭', 'Manajemen Surat' => '📜', 'Laporan KP' => '📈'
+    'Kelola Perusahaan' => '🏭', 'Manajemen Surat' => '📜', 'Laporan KP' => '📈',
+    'Panduan Pengguna' => '❓'
 ];
 ?>
 <!DOCTYPE html>
@@ -430,6 +469,7 @@ $menu_icons = [
         .dropdown-menu::-webkit-scrollbar-thumb:hover {
             background: rgba(255,255,255,0.5);
         }
+
     </style>
 </head>
 <body>
@@ -480,7 +520,7 @@ $menu_icons = [
     </nav>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+     document.addEventListener('DOMContentLoaded', function() {
         const dropdownButton = document.getElementById('dropdown-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
 

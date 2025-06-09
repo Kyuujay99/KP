@@ -85,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_pengajuan'])) {
                 if ($id_perusahaan_form === 'BARU') {
                     // Buat perusahaan baru
                     $email_placeholder = "new." . time() . "@placeholder.com";
-                    $password_placeholder = password_hash("default_pass", PASSWORD_DEFAULT);
+                    $password_placeholder = "default_pass_123"; // Plain text sesuai sistem
                     $stmt_new_comp = $conn->prepare("INSERT INTO perusahaan (email_perusahaan, password_perusahaan, nama_perusahaan, status_akun) VALUES (?, ?, ?, 'pending_approval')");
                     $stmt_new_comp->bind_param("sss", $email_placeholder, $password_placeholder, $nama_perusahaan_baru);
                     if ($stmt_new_comp->execute()) {
@@ -130,9 +130,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_pengajuan'])) {
                             $tipe_uploader = 'mahasiswa';
                             $nama_dokumen = "Proposal KP - " . $judul_kp;
                             $jenis_dokumen = 'proposal_kp';
+                            $db_path = str_replace('../', '', $dest_path);
                             
                             $stmt_doc = $conn->prepare("INSERT INTO dokumen_kp (id_pengajuan, uploader_id, tipe_uploader, nama_dokumen, jenis_dokumen, file_path) VALUES (?, ?, ?, ?, ?, ?)");
-                            $stmt_doc->bind_param("isssss", $id_pengajuan_baru, $nim_mahasiswa, $tipe_uploader, $nama_dokumen, $jenis_dokumen, $dest_path);
+                            $stmt_doc->bind_param("isssss", $id_pengajuan_baru, $nim_mahasiswa, $tipe_uploader, $nama_dokumen, $jenis_dokumen, $db_path);
                             
                             if (!$stmt_doc->execute()) {
                                 throw new Exception("Gagal menyimpan data dokumen proposal.");
@@ -244,11 +245,11 @@ require_once '../includes/header.php';
                         <h3>Informasi Proposal KP</h3>
                     </div>
                     <div class="form-group">
-                        <label for="judul_kp">Judul Kerja Praktek</label>
+                        <label for="judul_kp">Judul Kerja Praktek (*)</label>
                         <input type="text" id="judul_kp" name="judul_kp" value="<?php echo isset($_POST['judul_kp']) ? htmlspecialchars($_POST['judul_kp']) : ''; ?>" required placeholder="Contoh: Pengembangan Sistem Informasi A Berbasis Web">
                     </div>
                     <div class="form-group">
-                        <label for="deskripsi_kp">Deskripsi Singkat Rencana Kegiatan</label>
+                        <label for="deskripsi_kp">Deskripsi Singkat Rencana Kegiatan (*)</label>
                         <textarea id="deskripsi_kp" name="deskripsi_kp" rows="5" required placeholder="Jelaskan secara singkat apa yang akan Anda lakukan selama KP..."><?php echo isset($_POST['deskripsi_kp']) ? htmlspecialchars($_POST['deskripsi_kp']) : ''; ?></textarea>
                     </div>
                 </div>
@@ -271,7 +272,7 @@ require_once '../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group" id="input_nama_perusahaan_baru" style="display:none;">
-                        <label for="nama_perusahaan_baru">Nama Perusahaan Baru</label>
+                        <label for="nama_perusahaan_baru">Nama Perusahaan Baru (*)</label>
                         <input type="text" id="nama_perusahaan_baru" name="nama_perusahaan_baru" value="<?php echo isset($_POST['nama_perusahaan_baru']) ? htmlspecialchars($_POST['nama_perusahaan_baru']) : ''; ?>" placeholder="Ketik nama perusahaan tujuan Anda">
                         <small>Isi kolom ini jika perusahaan Anda belum terdaftar. Data akan diverifikasi oleh Admin.</small>
                     </div>
@@ -284,11 +285,11 @@ require_once '../includes/header.php';
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="tanggal_mulai_rencana">Tanggal Mulai</label>
+                            <label for="tanggal_mulai_rencana">Tanggal Mulai (*)</label>
                             <input type="date" id="tanggal_mulai_rencana" name="tanggal_mulai_rencana" value="<?php echo isset($_POST['tanggal_mulai_rencana']) ? htmlspecialchars($_POST['tanggal_mulai_rencana']) : ''; ?>" required>
                         </div>
                         <div class="form-group">
-                            <label for="tanggal_selesai_rencana">Tanggal Selesai</label>
+                            <label for="tanggal_selesai_rencana">Tanggal Selesai (*)</label>
                             <input type="date" id="tanggal_selesai_rencana" name="tanggal_selesai_rencana" value="<?php echo isset($_POST['tanggal_selesai_rencana']) ? htmlspecialchars($_POST['tanggal_selesai_rencana']) : ''; ?>" required>
                         </div>
                     </div>
@@ -414,6 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+    fill:none;
 }
 
 /* Form Hero Section */

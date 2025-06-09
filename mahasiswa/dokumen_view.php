@@ -123,6 +123,40 @@ require_once '../includes/header.php';
 </div>
 
 <style>
+body {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    background-attachment: fixed;
+}
+
+.page-hero {
+    padding: 3rem 2rem 6rem;
+    color: white;
+    text-align: center;
+}
+
+.page-hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.page-content-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    margin-top: -5rem; /* Kunci utama untuk menarik konten ke atas */
+    position: relative;
+    z-index: 10;
+}
+/* Sedikit penyesuaian agar tidak ada container ganda */
+.kp-dokumen-modern-container {
+    padding: 0; /* Hapus padding dari container asli */
+}
+.list-wrapper {
+    background-color: #ffffff;
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
 /* GAYA BARU YANG TERISOLASI DALAM KONTENER */
 .kp-dokumen-modern-container {
     --primary-color: #667eea;

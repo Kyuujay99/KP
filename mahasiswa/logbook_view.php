@@ -1,5 +1,5 @@
 <?php
-// /KP/mahasiswa/logbook_view.php
+// /KP/mahasiswa/logbook_view.php (Versi Disempurnakan)
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -33,12 +33,11 @@ if ($conn && ($conn instanceof mysqli)) {
                 l.jam_selesai,
                 l.uraian_kegiatan,
                 l.status_verifikasi_logbook,
-                l.catatan_pembimbing_logbook,
-                l.created_at AS tanggal_submit_logbook
+                l.catatan_pembimbing_logbook
             FROM logbook l
             JOIN pengajuan_kp pk ON l.id_pengajuan = pk.id_pengajuan
             WHERE pk.nim = ?
-            ORDER BY pk.id_pengajuan DESC, l.tanggal_kegiatan DESC, l.jam_mulai DESC"; // Urutkan agar KP terbaru di atas, lalu logbook terbaru di atas per KP
+            ORDER BY pk.id_pengajuan DESC, l.tanggal_kegiatan DESC, l.created_at DESC";
 
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -52,149 +51,178 @@ if ($conn && ($conn instanceof mysqli)) {
                 $logbook_entries_by_kp[$row['id_pengajuan']]['entries'][] = $row;
             }
         }
-        // Jika num_rows = 0, $logbook_entries_by_kp akan tetap kosong
         $stmt->close();
     } else {
-        $error_message = "Gagal menyiapkan query untuk mengambil data logbook: " . (($conn->error) ? htmlspecialchars($conn->error) : "Kesalahan tidak diketahui.");
+        $error_message = "Gagal mengambil data logbook: " . htmlspecialchars($conn->error);
     }
 } else {
-    $error_message = "Koneksi database gagal atau tidak valid.";
+    $error_message = "Koneksi database gagal.";
 }
 
-// Set judul halaman dan sertakan header
-$page_title = "Riwayat Logbook Kegiatan Kerja Praktek";
+$page_title = "Riwayat Logbook Kegiatan KP";
 require_once '../includes/header.php';
 ?>
 
-<div class="page-layout-wrapper">
-    <main class="main-content-area">
-        <div class="list-container logbook-view-container">
+<div class="kp-logbook-view-container">
+
+    <div class="list-hero-section">
+        <div class="list-hero-content">
+            <div class="list-hero-icon">
+                <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            </div>
             <h1><?php echo htmlspecialchars($page_title); ?></h1>
-            <p>Berikut adalah riwayat semua catatan logbook kegiatan Kerja Praktek yang telah Anda submit.</p>
-            <a href="/KP/mahasiswa/logbook_form.php" class="btn btn-primary mb-3"><i class="icon-plus"></i> Isi Logbook Baru</a>
-            <hr>
-
-            <?php if (!empty($error_message)): ?>
-                <div class="message error">
-                    <p><?php echo $error_message; ?></p>
-                </div>
-            <?php endif; ?>
-
-            <?php if (empty($logbook_entries_by_kp) && empty($error_message)): ?>
-                <div class="message info">
-                    <p>Anda belum memiliki riwayat catatan logbook.</p>
-                    <p>Silakan isi logbook kegiatan Anda melalui form yang tersedia.</p>
-                </div>
-            <?php elseif (!empty($logbook_entries_by_kp)): ?>
-                <?php foreach ($logbook_entries_by_kp as $id_kp => $data_kp): ?>
-                    <div class="kp-logbook-group card mb-4">
-                        <div class="card-header">
-                            <h3>Logbook untuk KP: <?php echo htmlspecialchars($data_kp['judul_kp']); ?> (ID Pengajuan: <?php echo $id_kp; ?>)</h3>
-                        </div>
-                        <div class="card-body">
-                            <?php if (empty($data_kp['entries'])): ?>
-                                <p>Belum ada entri logbook untuk KP ini.</p>
-                            <?php else: ?>
-                                <div class="table-responsive">
-                                    <table class="data-table logbook-table">
-                                        <thead>
-                                            <tr>
-                                                <th>No.</th>
-                                                <th>Tanggal Kegiatan</th>
-                                                <th>Waktu</th>
-                                                <th>Uraian Kegiatan</th>
-                                                <th>Status Verifikasi</th>
-                                                <th>Catatan Pembimbing</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php $entry_counter = 1; ?>
-                                            <?php foreach ($data_kp['entries'] as $entry): ?>
-                                                <tr>
-                                                    <td><?php echo $entry_counter++; ?></td>
-                                                    <td><?php echo date("d M Y", strtotime($entry['tanggal_kegiatan'])); ?></td>
-                                                    <td>
-                                                        <?php 
-                                                        if ($entry['jam_mulai'] && $entry['jam_selesai']) {
-                                                            echo date("H:i", strtotime($entry['jam_mulai'])) . " - " . date("H:i", strtotime($entry['jam_selesai']));
-                                                        } elseif ($entry['jam_mulai']) {
-                                                            echo date("H:i", strtotime($entry['jam_mulai'])) . " - (Selesai tidak dicatat)";
-                                                        } else {
-                                                            echo "-";
-                                                        }
-                                                        ?>
-                                                    </td>
-                                                    <td class="uraian-kegiatan-cell"><?php echo nl2br(htmlspecialchars($entry['uraian_kegiatan'])); ?></td>
-                                                    <td>
-                                                        <span class="status-logbook status-logbook-<?php echo strtolower(str_replace([' ', '_'], '-', $entry['status_verifikasi_logbook'])); ?>">
-                                                            <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($entry['status_verifikasi_logbook']))); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td class="catatan-pembimbing-cell">
-                                                        <?php echo $entry['catatan_pembimbing_logbook'] ? nl2br(htmlspecialchars($entry['catatan_pembimbing_logbook'])) : '<em>Belum ada catatan</em>'; ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-
+            <p>Berikut adalah catatan riwayat semua sesi bimbingan Anda dengan Dosen Pembimbing.</p>
+            <a href="/KP/mahasiswa/logbook_form.php" class="btn btn-primary mt-4">➕ Isi Logbook Baru</a>
         </div>
-    </main>
+    </div>
 
+    <div class="list-wrapper">
+        <?php if (!empty($error_message)): ?>
+            <div class="message error"><p><?php echo $error_message; ?></p></div>
+        <?php endif; ?>
+
+        <?php if (empty($logbook_entries_by_kp) && empty($error_message)): ?>
+            <div class="message info">
+                <h4>Belum Ada Riwayat Logbook</h4>
+                <p>Anda belum memiliki catatan logbook. Silakan isi kegiatan harian Anda melalui tombol "Isi Logbook Baru".</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($logbook_entries_by_kp as $id_kp => $data_kp): ?>
+                <div class="timeline-group">
+                    <div class="timeline-group-header">
+                        <h2>Logbook untuk KP: <?php echo htmlspecialchars($data_kp['judul_kp']); ?></h2>
+                    </div>
+                    <div class="timeline">
+                        <?php if (empty($data_kp['entries'])): ?>
+                            <p class="message info" style="text-align:left;">Belum ada entri logbook untuk KP ini.</p>
+                        <?php else: ?>
+                            <?php foreach ($data_kp['entries'] as $entry): ?>
+                                <div class="timeline-item animate-on-scroll">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-content">
+                                        <div class="logbook-header">
+                                            <div class="logbook-date-time">
+                                                <strong class="tanggal"><?php echo date("d F Y", strtotime($entry['tanggal_kegiatan'])); ?></strong>
+                                                <span class="waktu">
+                                                    <?php 
+                                                    if ($entry['jam_mulai']) {
+                                                        echo date("H:i", strtotime($entry['jam_mulai']));
+                                                        if($entry['jam_selesai']) echo " - " . date("H:i", strtotime($entry['jam_selesai']));
+                                                    } else {
+                                                        echo "Waktu tidak dicatat";
+                                                    }
+                                                    ?>
+                                                </span>
+                                            </div>
+                                            <span class="status-badge status-logbook-<?php echo strtolower(htmlspecialchars($entry['status_verifikasi_logbook'])); ?>">
+                                                <?php echo ucfirst(str_replace('_', ' ', htmlspecialchars($entry['status_verifikasi_logbook']))); ?>
+                                            </span>
+                                        </div>
+                                        <div class="logbook-body">
+                                            <p class="uraian"><?php echo nl2br(htmlspecialchars($entry['uraian_kegiatan'])); ?></p>
+                                            <?php if (!empty($entry['catatan_pembimbing_logbook'])): ?>
+                                                <div class="catatan-dosen">
+                                                    <strong>Catatan Dosen Pembimbing:</strong>
+                                                    <p><?php echo nl2br(htmlspecialchars($entry['catatan_pembimbing_logbook'])); ?></p>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
 </div>
 
 <style>
-    /* Asumsikan CSS umum dari header, sidebar, tabel, message, btn, card sudah ada */
-    .logbook-view-container h1 { margin-top: 0; margin-bottom: 10px; }
-    .logbook-view-container hr { margin-bottom: 20px; }
-    .logbook-view-container p { margin-bottom: 15px; }
-    .btn.mb-3 { margin-bottom: 1rem !important; } /* Untuk tombol Isi Logbook Baru */
-    .icon-plus::before { content: "+ "; font-weight: bold; }
+/* Modern Logbook View Styles */
+:root {
+    --primary-color: #667eea; --text-primary: #1f2937; --text-secondary: #6b7280;
+    --bg-light: #f9fafb; --border-color: #e5e7eb; --card-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --border-radius: 12px;
+}
+.kp-logbook-view-container {
+    font-family: 'Inter', sans-serif; color: var(--text-primary);
+    max-width: 1000px; margin: 0 auto; padding: 2rem;
+}
+.kp-logbook-view-container svg { stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; stroke: currentColor; }
+.list-hero-section {
+    padding: 3rem 2rem; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    border-radius: var(--border-radius); margin-bottom: 2rem; color: white; text-align: center;
+}
+.list-hero-content { max-width: 700px; margin: 0 auto; }
+.list-hero-icon { width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+.list-hero-icon svg { width: 28px; height: 28px; stroke: white; }
+.list-hero-section h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.list-hero-section p { font-size: 1.1rem; opacity: 0.9; font-weight: 300; }
+.list-wrapper { background-color: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--card-shadow); }
+.btn.mt-4 { margin-top: 1.5rem; }
 
-    .kp-logbook-group.card {
-        margin-bottom: 30px; /* Jarak antar grup KP */
-    }
-    .kp-logbook-group .card-header h3 {
-        margin: 0;
-        font-size: 1.4em;
-        color: #0056b3; /* Warna berbeda untuk judul KP */
-    }
-    .logbook-table td.uraian-kegiatan-cell {
-        white-space: pre-wrap; /* Agar spasi dan baris baru di uraian tetap tampil */
-        min-width: 250px; /* Agar kolom uraian tidak terlalu sempit */
-    }
-    .logbook-table td.catatan-pembimbing-cell {
-        white-space: pre-wrap;
-        font-style: italic;
-        color: #555;
-        min-width: 200px;
-    }
+/* Timeline Styles */
+.timeline-group { margin-bottom: 3rem; }
+.timeline-group-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color); }
+.timeline-group-header h2 { font-size: 1.5rem; color: var(--text-primary); }
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before {
+    content: ''; position: absolute; left: 10px; top: 10px; bottom: 10px;
+    width: 3px; background-color: var(--border-color); border-radius: 2px;
+}
+.timeline-item { position: relative; margin-bottom: 2rem; }
+.timeline-point {
+    position: absolute; left: -8px; top: 12px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background-color: var(--primary-color); border: 4px solid #fff;
+    box-shadow: 0 0 0 3px var(--border-color);
+}
+.timeline-content {
+    background-color: #fff; border: 1px solid var(--border-color);
+    border-radius: var(--border-radius); box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+.logbook-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background-color: var(--bg-light); border-bottom: 1px solid var(--border-color); }
+.logbook-date-time .tanggal { font-weight: 600; color: var(--text-primary); font-size: 1.1em; }
+.logbook-date-time .waktu { display: block; font-size: 0.9em; color: var(--text-secondary); }
+.logbook-body { padding: 1.5rem; }
+.logbook-body .uraian { margin-top: 0; line-height: 1.6; white-space: pre-wrap; }
+.catatan-dosen {
+    margin-top: 1.5rem; padding: 1rem; border-radius: 8px;
+    background-color: #eef2ff; border-left: 4px solid #6366f1;
+}
+.catatan-dosen strong { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4338ca; }
+.catatan-dosen p { margin: 0; line-height: 1.6; font-style: italic; }
 
-    /* Styling untuk status verifikasi logbook (ENUM: 'pending','disetujui','revisi_minor','revisi_mayor') */
-    .status-logbook {
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: bold;
-        color: #212529; /* Default warna teks */
-        white-space: nowrap;
-    }
-    .status-logbook-pending { background-color: #ffc107; /* Kuning */ }
-    .status-logbook-disetujui { background-color: #28a745; color: #fff; /* Hijau */ }
-    .status-logbook-revisi-minor { background-color: #fd7e14; color: #fff; /* Orange */ }
-    .status-logbook-revisi-mayor { background-color: #dc3545; color: #fff; /* Merah */ }
+.status-badge { padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.status-logbook-pending { background-color: #fef3c7; color: #92400e; }
+.status-logbook-disetujui { background-color: #d1fae5; color: #065f46; }
+.status-logbook-revisi-minor { background-color: #ffedd5; color: #9a3412; }
+.status-logbook-revisi-mayor { background-color: #fee2e2; color: #991b1b; }
+
+.animate-on-scroll { opacity: 0; transform: translateX(20px); transition: opacity .5s ease-out, transform .5s ease-out; }
+.animate-on-scroll.is-visible { opacity: 1; transform: translateX(0); }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const animatedElements = document.querySelectorAll('.animate-on-scroll');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1 });
+    animatedElements.forEach(el => observer.observe(el));
+});
+</script>
 
 <?php
 require_once '../includes/footer.php';
-
-if (isset($conn) && ($conn instanceof mysqli)) {
+if (isset($conn)) {
     $conn->close();
 }
 ?>
