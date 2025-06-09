@@ -72,7 +72,7 @@ require_once '../includes/header.php';
             <h1 class="hero-title">
                 Selamat Datang, <span class="highlight"><?php echo htmlspecialchars($nama_admin_login); ?></span>
             </h1>
-            <p class="hero-subtitle">Dashboard Admin Program Studi - Kelola Kerja Praktek dengan Efisien</p>
+            <p class="hero-subtitle">Dashboard Admin - Kelola Kerja Praktek Universitas Trunojoyo Madura</p>
             <div class="current-time" id="currentTime"></div>
         </div>
     </div>

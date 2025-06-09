@@ -112,7 +112,7 @@ require_once '../includes/header.php';
             <h1 class="hero-title">
                 Selamat Datang, <span class="highlight"><?php echo htmlspecialchars($nama_dosen_login); ?></span>
             </h1>
-            <p class="hero-subtitle">Dashboard Dosen Pembimbing & Penguji - Kelola Bimbingan dan Penilaian KP</p>
+            <p class="hero-subtitle">Dashboard Dosen Pembimbing & Penguji - Kelola Bimbingan dan Penilaian KP Universitas Trunojoyo Madura</p>
             <div class="current-time" id="currentTime"></div>
         </div>
     </div>
