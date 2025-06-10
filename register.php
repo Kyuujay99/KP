@@ -121,7 +121,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary-color: #6a11cb; --secondary-color: #2575fc; --dark-color: #1a1a2e; --light-color: #f4f7f9; --text-color: #5a5a5a; --border-radius: 15px; }
-        body { font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; overflow-y: auto; display: flex; justify-content: center; align-items: center; padding: 2rem 1rem; background: linear-gradient(-45deg, #6a11cb, #2575fc, #ec008c, #fc6767); background-size: 400% 400%; animation: gradientBG 18s ease infinite; }
+        body { font-family: 'Poppins', sans-serif; margin: 0; min-height: 100vh; overflow-y: auto; display: flex; justify-content: center; align-items: center; padding: 2rem 1rem; background: linear-gradient(-45deg, #c3cfe2, #2c3e50, #2d3748, #0f172a); background-size: 400% 400%; animation: gradientBG 18s ease infinite; }
         @keyframes gradientBG { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
         .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events:none; overflow: hidden;}
         .shape { position: absolute; list-style: none; display: block; background: rgba(255, 255, 255, 0.15); animation: moveShape 20s linear infinite; bottom: -150px; }
